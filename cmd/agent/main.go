@@ -87,7 +87,12 @@ func MakeRequest(client *http.Client, url string) {
 	request.Header.Add("Content-Type", "text/plain")
 	request.Header.Add("Content-Length", strconv.Itoa(len(data)))
 
-	client.Do(request)
+	response, err := client.Do(request)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	defer response.Body.Close()
 }
 
 func ReportMetrics(client *http.Client, gaugeMetrics *[]GaugeItem, counterMetrics *[]CounterItem) {
