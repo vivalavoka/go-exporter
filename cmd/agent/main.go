@@ -79,8 +79,8 @@ func GetMetrics(pollCount counter) (*[]GaugeItem, *[]CounterItem) {
 }
 
 func MakeRequest(client *http.Client, url string) {
-	data := url
-	request, err := http.NewRequest(http.MethodPost, "https://webhook.site/ef75d15f-48dd-48b5-a4be-0a98a4633099", bytes.NewBufferString(data))
+	data := ""
+	request, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString(data))
 	if err != nil {
 		fmt.Println(err)
 	}
