@@ -1,17 +1,21 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"math/rand"
+	"net/http"
 	"reflect"
 	"runtime"
+	"strconv"
+	"strings"
 	"time"
 )
 
 const (
 	pollInterval   = 2 * time.Second
 	reportInterval = 10 * time.Second
-	reportAddress  = "localhost:8000"
+	reportAddress  = "127.0.0.1:8080"
 )
 
 type gauge float64
@@ -27,7 +31,11 @@ type CounterItem struct {
 	Value counter
 }
 
-func GetMetrics(pollCount counter) ([]GaugeItem, []CounterItem) {
+func SplitType(valueType string) string {
+	return strings.Split(valueType, ".")[1]
+}
+
+func GetMetrics(pollCount counter) (*[]GaugeItem, *[]CounterItem) {
 	var stats runtime.MemStats
 	runtime.ReadMemStats(&stats)
 	random := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -67,32 +75,49 @@ func GetMetrics(pollCount counter) ([]GaugeItem, []CounterItem) {
 		{"RandomValue", gauge(random.Float64())},
 	}
 
-	return gaugeMetrics, counterMetrics
+	return &gaugeMetrics, &counterMetrics
 }
 
-func ReportMetrics(gaugeMetrics []GaugeItem, counterMetrics []CounterItem) {
-	for _, item := range gaugeMetrics {
-		fmt.Printf("Name: %s, Type: %s, Value: %v\n", item.Name, reflect.TypeOf(item.Value), item.Value)
+func MakeRequest(client *http.Client, url string) {
+	data := url
+	request, err := http.NewRequest(http.MethodPost, "https://webhook.site/ef75d15f-48dd-48b5-a4be-0a98a4633099", bytes.NewBufferString(data))
+	if err != nil {
+		fmt.Println(err)
+	}
+	request.Header.Add("Content-Type", "text/plain")
+	request.Header.Add("Content-Length", strconv.Itoa(len(data)))
+
+	client.Do(request)
+}
+
+func ReportMetrics(client *http.Client, gaugeMetrics *[]GaugeItem, counterMetrics *[]CounterItem) {
+	for _, item := range *gaugeMetrics {
+		url := fmt.Sprintf("http://%s/update/%s/%s/%v", reportAddress, SplitType(reflect.TypeOf(item.Value).String()), item.Name, item.Value)
+		MakeRequest(client, url)
 	}
 
-	for _, item := range counterMetrics {
-		fmt.Printf("Name: %s, Type: %s, Value: %v\n", item.Name, reflect.TypeOf(item.Value), item.Value)
+	for _, item := range *counterMetrics {
+		url := fmt.Sprintf("http://%s/update/%s/%s/%v", reportAddress, SplitType(reflect.TypeOf(item.Value).String()), item.Name, item.Value)
+		MakeRequest(client, url)
 	}
 }
 
 func main() {
+	client := &http.Client{}
+
 	pollCount := counter(0)
 	pollTicker := time.NewTicker(pollInterval)
 	reportTicker := time.NewTicker(reportInterval)
 	defer pollTicker.Stop()
 	defer reportTicker.Stop()
 
-	var gaugeMetrics []GaugeItem
-	var counterMetrics []CounterItem
+	var gaugeMetrics *[]GaugeItem
+	var counterMetrics *[]CounterItem
+
 	for {
 		select {
 		case <-reportTicker.C:
-			ReportMetrics(gaugeMetrics, counterMetrics)
+			ReportMetrics(client, gaugeMetrics, counterMetrics)
 		case <-pollTicker.C:
 			pollCount = pollCount + 1
 			gaugeMetrics, counterMetrics = GetMetrics(pollCount)
