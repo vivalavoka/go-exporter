@@ -2,44 +2,29 @@ package main
 
 import (
 	"fmt"
+	"go-exporter/cmd/server/metrics"
 	"net/http"
 	"strconv"
 	"strings"
 )
 
-const gaugeType = "gauge"
-const counterType = "counter"
-
-type gauge float64
-type counter int64
-
-type GagueMetric struct {
-	Name  string
-	Value gauge
-}
-
-type CounterMetric struct {
-	Name  string
-	Value counter
-}
-
 type Storage struct {
-	Gauges   map[string]gauge
-	Counters map[string]counter
+	Gauges   map[string]metrics.Gauge
+	Counters map[string]metrics.Counter
 }
 
-func (s *Storage) SaveGauge(metric *GagueMetric) error {
+func (s *Storage) SaveGauge(metric *metrics.GagueMetric) error {
 	s.Gauges[metric.Name] = metric.Value
 	return nil
 }
 
-func (s *Storage) SaveCounter(metric CounterMetric) error {
+func (s *Storage) SaveCounter(metric metrics.CounterMetric) error {
 	if _, ok := s.Counters[metric.Name]; ok {
 		fmt.Println(ok)
-		s.Counters[metric.Name] += counter(metric.Value)
+		s.Counters[metric.Name] += metrics.Counter(metric.Value)
 	} else {
 		fmt.Println(ok)
-		s.Counters[metric.Name] = counter(metric.Value)
+		s.Counters[metric.Name] = metrics.Counter(metric.Value)
 	}
 	return nil
 }
@@ -51,8 +36,8 @@ type UpdateParams struct {
 }
 
 var storage = Storage{
-	Gauges:   map[string]gauge{},
-	Counters: map[string]counter{},
+	Gauges:   map[string]metrics.Gauge{},
+	Counters: map[string]metrics.Counter{},
 }
 
 // MetricHandle — обработчик запроса.
@@ -81,18 +66,18 @@ func MetricHandle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch params.MetricType {
-	case gaugeType:
+	case metrics.GaugeType:
 		value, err := strconv.ParseFloat(params.MetricValue, 64)
 		if err != nil {
 			http.Error(w, "Wrong metric value", http.StatusBadRequest)
 		}
-		storage.SaveGauge(&GagueMetric{params.MetricName, gauge(value)})
-	case counterType:
+		storage.SaveGauge(&metrics.GagueMetric{params.MetricName, metrics.Gauge(value)})
+	case metrics.CounterType:
 		value, err := strconv.ParseInt(params.MetricValue, 10, 64)
 		if err != nil {
 			http.Error(w, "Wrong metric value", http.StatusBadRequest)
 		}
-		storage.SaveCounter(CounterMetric{params.MetricName, counter(value)})
+		storage.SaveCounter(metrics.CounterMetric{params.MetricName, metrics.Counter(value)})
 	default:
 		http.Error(w, "Wrong metric type", http.StatusBadRequest)
 	}
