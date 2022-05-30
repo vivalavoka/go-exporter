@@ -57,10 +57,10 @@ var storage = Storage{
 
 // MetricHandle — обработчик запроса.
 func MetricHandle(w http.ResponseWriter, r *http.Request) {
-	// if r.Method != http.MethodPost {
-	// 	http.Error(w, "Only POST requests are allowed!", http.StatusMethodNotAllowed)
-	// 	return
-	// }
+	if r.Method != http.MethodPost {
+		http.Error(w, "Only POST requests are allowed!", http.StatusMethodNotAllowed)
+		return
+	}
 
 	args := strings.Split(r.URL.Path, "/")
 
