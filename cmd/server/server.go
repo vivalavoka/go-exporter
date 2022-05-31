@@ -16,11 +16,9 @@ func (s *Server) Start() {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	r.Route("/", func(r chi.Router) {
-		r.Get("/", GetAllMetrics)
-	})
-	r.Post("/update/{type}/{name}/{value}", MetricHandle)
-	r.Get("/value/{type}/{name}", GetMetric)
+	UpdateMetricRoute(r)
+	GetAllMetricsRoute(r)
+	GetMetricRoute(r)
 
 	http.ListenAndServe(":8080", r)
 }
