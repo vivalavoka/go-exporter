@@ -47,14 +47,14 @@ func MetricHandle(w http.ResponseWriter, r *http.Request) {
 	case GaugeType:
 		value, err := strconv.ParseFloat(params.MetricValue, 64)
 		if err != nil {
-			http.Error(w, "Wrong metric value", http.StatusNotFound)
+			http.Error(w, "Wrong metric value", http.StatusBadRequest)
 			return
 		}
 		SaveGauge(params.MetricName, gauge(value))
 	case CounterType:
 		value, err := strconv.ParseInt(params.MetricValue, 10, 64)
 		if err != nil {
-			http.Error(w, "Wrong metric value", http.StatusNotFound)
+			http.Error(w, "Wrong metric value", http.StatusBadRequest)
 			return
 		}
 		SaveCounter(params.MetricName, counter(value))
