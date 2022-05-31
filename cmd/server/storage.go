@@ -23,14 +23,14 @@ func GetMetricGauge(name string) (gauge, error) {
 	if value, ok := storage.Gauges[name]; ok {
 		return value, nil
 	}
-	return 0, fmt.Errorf("There is no metric by name: %s", name)
+	return 0, fmt.Errorf("there is no metric by name: %s", name)
 }
 
 func GetMetricCounter(name string) (counter, error) {
 	if value, ok := storage.Counters[name]; ok {
 		return value, nil
 	}
-	return 0, fmt.Errorf("There is no metric by name: %s", name)
+	return 0, fmt.Errorf("there is no metric by name: %s", name)
 }
 
 func SaveGauge(name string, value gauge) error {

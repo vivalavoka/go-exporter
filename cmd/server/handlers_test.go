@@ -21,8 +21,6 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.
 	respBody, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	defer resp.Body.Close()
-
 	return resp, string(respBody)
 }
 
@@ -100,6 +98,7 @@ func TestMetricHandle(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			response, body := testRequest(t, ts, http.MethodPost, tt.url)
+			defer response.Body.Close()
 
 			assert.Equal(t, tt.want.code, response.StatusCode)
 			assert.Equal(t, tt.want.contentType, response.Header.Get("Content-Type"))
