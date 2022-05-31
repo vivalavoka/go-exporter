@@ -48,20 +48,24 @@ func MetricHandle(w http.ResponseWriter, r *http.Request) {
 		value, err := strconv.ParseFloat(params.MetricValue, 64)
 		if err != nil {
 			http.Error(w, "Wrong metric value", http.StatusBadRequest)
+			return
 		}
 		SaveGauge(params.MetricName, gauge(value))
 	case CounterType:
 		value, err := strconv.ParseInt(params.MetricValue, 10, 64)
 		if err != nil {
 			http.Error(w, "Wrong metric value", http.StatusBadRequest)
+			return
 		}
 		SaveCounter(params.MetricName, counter(value))
 	default:
 		http.Error(w, "Wrong metric type", http.StatusBadRequest)
+		return
 	}
 
 	PrintStorage()
 
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(""))
 }
