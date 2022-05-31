@@ -27,7 +27,7 @@ func TestMetricHandle(t *testing.T) {
 			name: "wrong request path",
 			url:  "/invalid-method/counter/test-name/10",
 			want: want{
-				code:        400,
+				code:        404,
 				response:    "Wrong request path\n",
 				contentType: "text/plain; charset=utf-8",
 			},
@@ -36,7 +36,7 @@ func TestMetricHandle(t *testing.T) {
 			name: "wrong request path",
 			url:  "/update",
 			want: want{
-				code:        400,
+				code:        404,
 				response:    "Wrong request path\n",
 				contentType: "text/plain; charset=utf-8",
 			},
@@ -45,7 +45,7 @@ func TestMetricHandle(t *testing.T) {
 			name: "wrong metric value string",
 			url:  "/update/counter/test-name/invalid-type",
 			want: want{
-				code:        400,
+				code:        404,
 				response:    "Wrong metric value\n",
 				contentType: "text/plain; charset=utf-8",
 			},
@@ -54,7 +54,7 @@ func TestMetricHandle(t *testing.T) {
 			name: "wrong metric value float",
 			url:  "/update/counter/test-name/0.01",
 			want: want{
-				code:        400,
+				code:        404,
 				response:    "Wrong metric value\n",
 				contentType: "text/plain; charset=utf-8",
 			},
@@ -63,7 +63,7 @@ func TestMetricHandle(t *testing.T) {
 			name: "invalid metric type",
 			url:  "/update/invalid-type/test-name/10",
 			want: want{
-				code:        400,
+				code:        501,
 				response:    "Wrong metric type\n",
 				contentType: "text/plain; charset=utf-8",
 			},
