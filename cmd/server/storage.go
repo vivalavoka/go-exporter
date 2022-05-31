@@ -17,11 +17,7 @@ func SaveGauge(name string, value gauge) error {
 }
 
 func SaveCounter(name string, value counter) error {
-	if _, ok := storage.Counters[name]; ok {
-		storage.Counters[name] += value
-	} else {
-		storage.Counters[name] = value
-	}
+	storage.Counters[name] += value
 	return nil
 }
 
