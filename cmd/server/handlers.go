@@ -25,17 +25,17 @@ func GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 
 	gauges := GetGaugeMetrics()
 	for name, value := range gauges {
-		body += fmt.Sprintf("%s %f\n", name, value)
+		body += fmt.Sprintf("<strong>%s:</strong> %f</br>", name, value)
 	}
 
 	counters := GetCounterMetrics()
 	for name, value := range counters {
-		body += fmt.Sprintf("%s %d\n", name, value)
+		body += fmt.Sprintf("<strong>%s:</strong> %d</br>", name, value)
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(body))
+	fmt.Fprint(w, body)
 }
 
 func GetMetric(w http.ResponseWriter, r *http.Request) {
