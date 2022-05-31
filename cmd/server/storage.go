@@ -11,6 +11,28 @@ func PrintStorage() {
 	fmt.Println(storage)
 }
 
+func GetGaugeMetrics() map[string]gauge {
+	return storage.Gauges
+}
+
+func GetCounterMetrics() map[string]counter {
+	return storage.Counters
+}
+
+func GetMetricGauge(name string) (gauge, error) {
+	if value, ok := storage.Gauges[name]; ok {
+		return value, nil
+	}
+	return 0, fmt.Errorf("There is no metric by name: %s", name)
+}
+
+func GetMetricCounter(name string) (counter, error) {
+	if value, ok := storage.Counters[name]; ok {
+		return value, nil
+	}
+	return 0, fmt.Errorf("There is no metric by name: %s", name)
+}
+
 func SaveGauge(name string, value gauge) error {
 	storage.Gauges[name] = value
 	return nil

@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
+
+	"github.com/go-chi/chi/v5"
 )
 
 type gauge float64
@@ -18,29 +20,67 @@ type UpdateParams struct {
 	MetricValue string
 }
 
+func GetAllMetrics(w http.ResponseWriter, r *http.Request) {
+	body := ""
+
+	gauges := GetGaugeMetrics()
+	for name, value := range gauges {
+		body += fmt.Sprintf("%s %f\n", name, value)
+	}
+
+	counters := GetCounterMetrics()
+	for name, value := range counters {
+		body += fmt.Sprintf("%s %d\n", name, value)
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(body))
+}
+
+func GetMetric(w http.ResponseWriter, r *http.Request) {
+	params := UpdateParams{
+		MetricType: chi.URLParam(r, "type"),
+		MetricName: chi.URLParam(r, "name"),
+	}
+
+	switch params.MetricType {
+	case GaugeType:
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+
+		value, err := GetMetricGauge(params.MetricName)
+		if err != nil {
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(fmt.Sprintf("%f", value)))
+	case CounterType:
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+
+		value, err := GetMetricCounter(params.MetricName)
+		if err != nil {
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(fmt.Sprintf("%d", value)))
+	default:
+		http.Error(w, "Wrong metric type", http.StatusNotImplemented)
+		return
+	}
+}
+
 // MetricHandle — обработчик запроса.
 func MetricHandle(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Only POST requests are allowed!", http.StatusMethodNotAllowed)
-		return
-	}
-
-	args := strings.Split(r.URL.Path, "/")
-
-	if len(args) != 5 {
-		http.Error(w, "Wrong request path", http.StatusNotFound)
-		return
-	}
-
-	if args[1] != "update" {
-		http.Error(w, "Wrong request path", http.StatusNotFound)
-		return
-	}
-
 	params := UpdateParams{
-		MetricType:  args[2],
-		MetricName:  args[3],
-		MetricValue: args[4],
+		MetricType:  chi.URLParam(r, "type"),
+		MetricName:  chi.URLParam(r, "name"),
+		MetricValue: chi.URLParam(r, "value"),
 	}
 
 	switch params.MetricType {
