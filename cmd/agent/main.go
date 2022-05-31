@@ -1,12 +1,14 @@
 package main
 
 import (
-	"net/http"
+	"github.com/go-resty/resty/v2"
 )
 
 func main() {
+
+	client := resty.New()
 	agent := Agent{
-		client:    &http.Client{},
+		client:    client,
 		pollCount: counter(0),
 	}
 

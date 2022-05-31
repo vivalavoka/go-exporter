@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"time"
+
+	"github.com/go-resty/resty/v2"
 )
 
 const (
@@ -13,7 +14,7 @@ const (
 )
 
 type Agent struct {
-	client         *http.Client
+	client         *resty.Client
 	pollCount      counter
 	gaugeMetrics   *[]GaugeItem
 	counterMetrics *[]CounterItem

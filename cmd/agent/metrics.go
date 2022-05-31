@@ -3,11 +3,12 @@ package main
 import (
 	"fmt"
 	"math/rand"
-	"net/http"
 	"reflect"
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/go-resty/resty/v2"
 )
 
 type gauge float64
@@ -27,15 +28,24 @@ func splitType(valueType string) string {
 	return strings.Split(valueType, ".")[1]
 }
 
-func ReportMetrics(client *http.Client, gaugeMetrics *[]GaugeItem, counterMetrics *[]CounterItem) {
+func ReportMetrics(client *resty.Client, gaugeMetrics *[]GaugeItem, counterMetrics *[]CounterItem) {
+
 	for _, item := range *gaugeMetrics {
-		url := fmt.Sprintf("http://%s/update/%s/%s/%v", reportAddress, splitType(reflect.TypeOf(item.Value).String()), item.Name, item.Value)
-		MakeRequest(client, url)
+		params := UpdateParams{
+			MetricType:  splitType(reflect.TypeOf(item.Value).String()),
+			MetricName:  item.Name,
+			MetricValue: fmt.Sprintf("%f", item.Value),
+		}
+		MakeRequest(client, &params)
 	}
 
 	for _, item := range *counterMetrics {
-		url := fmt.Sprintf("http://%s/update/%s/%s/%v", reportAddress, splitType(reflect.TypeOf(item.Value).String()), item.Name, item.Value)
-		MakeRequest(client, url)
+		params := UpdateParams{
+			MetricType:  splitType(reflect.TypeOf(item.Value).String()),
+			MetricName:  item.Name,
+			MetricValue: fmt.Sprintf("%d", item.Value),
+		}
+		MakeRequest(client, &params)
 	}
 }
 
