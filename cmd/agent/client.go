@@ -1,25 +1,33 @@
 package main
 
 import (
-	"bytes"
-	"fmt"
-	"net/http"
-	"strconv"
+	"github.com/go-resty/resty/v2"
 )
 
-func MakeRequest(client *http.Client, url string) {
-	data := ""
-	request, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString(data))
-	if err != nil {
-		fmt.Println(err)
-	}
-	request.Header.Add("Content-Type", "text/plain")
-	request.Header.Add("Content-Length", strconv.Itoa(len(data)))
+type Client struct {
+	restClient *resty.Client
+}
 
-	response, err := client.Do(request)
-	if err != nil {
-		fmt.Println(err)
-	}
+type UpdateParams struct {
+	MetricName  string
+	MetricType  string
+	MetricValue string
+}
 
-	defer response.Body.Close()
+func NewClient(client *resty.Client) *Client {
+	return &Client{restClient: client}
+}
+
+func (c *Client) MakeRequest(params *UpdateParams) (*resty.Response, error) {
+	return c.restClient.R().
+		SetHeader("Content-Type", "text/plain").
+		SetBody("").
+		SetPathParams(map[string]string{
+			"address": reportAddress,
+			"type":    params.MetricType,
+			"name":    params.MetricName,
+			"value":   params.MetricValue,
+		}).
+		Post("http://{address}/update/{type}/{name}/{value}")
+
 }

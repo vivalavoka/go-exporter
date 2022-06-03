@@ -1,9 +1,9 @@
 package main
 
 import (
-	"fmt"
-	"net/http"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -13,10 +13,17 @@ const (
 )
 
 type Agent struct {
-	client         *http.Client
+	client         *Client
 	pollCount      counter
-	gaugeMetrics   *[]GaugeItem
-	counterMetrics *[]CounterItem
+	gaugeMetrics   []GaugeItem
+	counterMetrics []CounterItem
+}
+
+func NewAgent(client *Client) *Agent {
+	return &Agent{
+		client:    client,
+		pollCount: counter(0),
+	}
 }
 
 func (a *Agent) Start() {
@@ -28,11 +35,11 @@ func (a *Agent) Start() {
 	for {
 		select {
 		case <-reportTicker.C:
-			fmt.Println("Report metrics")
+			log.Info("Report metrics")
 			ReportMetrics(a.client, a.gaugeMetrics, a.counterMetrics)
 		case <-pollTicker.C:
-			fmt.Println("Get metrics")
-			a.pollCount = a.pollCount + 1
+			log.Info("Get metrics")
+			a.pollCount += 1
 			a.gaugeMetrics, a.counterMetrics = GetMetrics(a.pollCount)
 		}
 	}
