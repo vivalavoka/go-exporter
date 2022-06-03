@@ -3,11 +3,16 @@ package main
 import (
 	"net/http"
 
+	"github.com/vivalavoka/go-exporter/cmd/server/handlers"
+	"github.com/vivalavoka/go-exporter/cmd/server/storage"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-type Server struct{}
+type Server struct {
+	storage *storage.Storage
+}
 
 func (s *Server) Start() {
 	r := chi.NewRouter()
@@ -16,9 +21,9 @@ func (s *Server) Start() {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	UpdateMetricRoute(r)
-	GetAllMetricsRoute(r)
-	GetMetricRoute(r)
+	handlers.UpdateMetricRoute(r)
+	handlers.GetAllMetricsRoute(r)
+	handlers.GetMetricRoute(r)
 
 	http.ListenAndServe(":8080", r)
 }

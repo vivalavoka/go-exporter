@@ -1,6 +1,8 @@
-package main
+package handlers
 
-import "github.com/go-chi/chi/v5"
+import (
+	"github.com/go-chi/chi/v5"
+)
 
 func UpdateMetricRoute(r chi.Router) chi.Router {
 	r.Post("/update/{type}/{name}/{value}", MetricHandle)

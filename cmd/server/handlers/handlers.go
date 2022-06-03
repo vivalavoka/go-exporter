@@ -1,15 +1,15 @@
-package main
+package handlers
 
 import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"text/template"
+
+	"github.com/vivalavoka/go-exporter/cmd/server/storage"
 
 	"github.com/go-chi/chi/v5"
 )
-
-type gauge float64
-type counter int64
 
 const GaugeType = "gauge"
 const CounterType = "counter"
@@ -20,35 +20,50 @@ type UpdateParams struct {
 	MetricValue string
 }
 
-func GetAllMetrics(w http.ResponseWriter, r *http.Request) {
-	body := ""
+type MetricData struct {
+	Name  string
+	Value string
+}
 
-	gauges := GetGaugeMetrics()
-	for name, value := range gauges {
-		body += fmt.Sprintf("<strong>%s:</strong> %.3f</br>", name, value)
+type MetricsPageData struct {
+	PageTitle string
+	Metrics   []MetricData
+}
+
+func GetAllMetrics(w http.ResponseWriter, r *http.Request) {
+	repo := storage.GetStorage()
+	tmpl := template.Must(template.ParseFiles("layouts/metrics.html"))
+	data := MetricsPageData{
+		PageTitle: "Exporter metrics",
 	}
 
-	counters := GetCounterMetrics()
+	gauges := repo.GetGaugeMetrics()
+	for name, value := range gauges {
+		data.Metrics = append(data.Metrics, MetricData{name, fmt.Sprintf("%.3f", value)})
+	}
+
+	counters := repo.GetCounterMetrics()
 	for name, value := range counters {
-		body += fmt.Sprintf("<strong>%s:</strong> %d</br>", name, value)
+		data.Metrics = append(data.Metrics, MetricData{name, fmt.Sprintf("%d", value)})
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, body)
+	tmpl.Execute(w, data)
 }
 
 func GetMetric(w http.ResponseWriter, r *http.Request) {
+	repo := storage.GetStorage()
 	params := UpdateParams{
 		MetricType: chi.URLParam(r, "type"),
 		MetricName: chi.URLParam(r, "name"),
 	}
 
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+
 	switch params.MetricType {
 	case GaugeType:
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-
-		value, err := GetMetricGauge(params.MetricName)
+		value, err := repo.GetMetricGauge(params.MetricName)
 		if err != nil {
 			w.WriteHeader(http.StatusNotFound)
 			w.Write([]byte(err.Error()))
@@ -58,9 +73,7 @@ func GetMetric(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(fmt.Sprintf("%.3f", value)))
 	case CounterType:
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-
-		value, err := GetMetricCounter(params.MetricName)
+		value, err := repo.GetMetricCounter(params.MetricName)
 		if err != nil {
 			w.WriteHeader(http.StatusNotFound)
 			w.Write([]byte(err.Error()))
@@ -77,6 +90,7 @@ func GetMetric(w http.ResponseWriter, r *http.Request) {
 
 // MetricHandle — обработчик запроса.
 func MetricHandle(w http.ResponseWriter, r *http.Request) {
+	repo := storage.GetStorage()
 	params := UpdateParams{
 		MetricType:  chi.URLParam(r, "type"),
 		MetricName:  chi.URLParam(r, "name"),
@@ -90,14 +104,14 @@ func MetricHandle(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Wrong metric value", http.StatusBadRequest)
 			return
 		}
-		SaveGauge(params.MetricName, gauge(value))
+		repo.SaveGauge(params.MetricName, storage.Gauge(value))
 	case CounterType:
 		value, err := strconv.ParseInt(params.MetricValue, 10, 64)
 		if err != nil {
 			http.Error(w, "Wrong metric value", http.StatusBadRequest)
 			return
 		}
-		SaveCounter(params.MetricName, counter(value))
+		repo.SaveCounter(params.MetricName, storage.Counter(value))
 	default:
 		http.Error(w, "Wrong metric type", http.StatusNotImplemented)
 		return

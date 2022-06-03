@@ -3,16 +3,16 @@ package main
 import (
 	"fmt"
 	"math/rand"
-	"reflect"
 	"runtime"
-	"strings"
-	"time"
 
-	"github.com/go-resty/resty/v2"
+	log "github.com/sirupsen/logrus"
 )
 
 type gauge float64
 type counter int64
+
+const GaugeType = "gauge"
+const CounterType = "counter"
 
 type GaugeItem struct {
 	Name  string
@@ -24,35 +24,39 @@ type CounterItem struct {
 	Value counter
 }
 
-func splitType(valueType string) string {
-	return strings.Split(valueType, ".")[1]
-}
-
-func ReportMetrics(client *resty.Client, gaugeMetrics *[]GaugeItem, counterMetrics *[]CounterItem) {
-
-	for _, item := range *gaugeMetrics {
+func ReportMetrics(client *Client, gaugeMetrics []GaugeItem, counterMetrics []CounterItem) {
+	for _, item := range gaugeMetrics {
 		params := UpdateParams{
-			MetricType:  splitType(reflect.TypeOf(item.Value).String()),
+			MetricType:  GaugeType,
 			MetricName:  item.Name,
 			MetricValue: fmt.Sprintf("%f", item.Value),
 		}
-		MakeRequest(client, &params)
+		_, err := client.MakeRequest(&params)
+
+		if err != nil {
+			log.Error(err)
+		}
 	}
 
-	for _, item := range *counterMetrics {
+	for _, item := range counterMetrics {
 		params := UpdateParams{
-			MetricType:  splitType(reflect.TypeOf(item.Value).String()),
+			MetricType:  CounterType,
 			MetricName:  item.Name,
 			MetricValue: fmt.Sprintf("%d", item.Value),
 		}
-		MakeRequest(client, &params)
+		_, err := client.MakeRequest(&params)
+
+		if err != nil {
+			log.Error(err)
+		}
 	}
 }
 
-func GetMetrics(pollCount counter) (*[]GaugeItem, *[]CounterItem) {
+func GetMetrics(pollCount counter) ([]GaugeItem, []CounterItem) {
 	var stats runtime.MemStats
 	runtime.ReadMemStats(&stats)
-	random := rand.New(rand.NewSource(time.Now().UnixNano()))
+	random := rand.Float64()
+	log.Info(random)
 
 	counterMetrics := []CounterItem{
 		{"PollCount", pollCount},
@@ -86,8 +90,8 @@ func GetMetrics(pollCount counter) (*[]GaugeItem, *[]CounterItem) {
 		{"StackSys", gauge(stats.StackSys)},
 		{"Sys", gauge(stats.Sys)},
 		{"TotalAlloc", gauge(stats.TotalAlloc)},
-		{"RandomValue", gauge(random.Float64())},
+		{"RandomValue", gauge(random)},
 	}
 
-	return &gaugeMetrics, &counterMetrics
+	return gaugeMetrics, counterMetrics
 }

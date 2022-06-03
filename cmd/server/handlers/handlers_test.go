@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"io/ioutil"
@@ -44,7 +44,7 @@ func TestMetricHandle(t *testing.T) {
 			name: "invalid metric type",
 			url:  "/update/invalid-type/test-name/10",
 			want: want{
-				code:        501,
+				code:        http.StatusNotImplemented,
 				response:    "Wrong metric type\n",
 				contentType: "text/plain; charset=utf-8",
 			},
@@ -53,7 +53,7 @@ func TestMetricHandle(t *testing.T) {
 			name: "wrong counter value string",
 			url:  "/update/counter/test-name/invalid-type",
 			want: want{
-				code:        400,
+				code:        http.StatusBadRequest,
 				response:    "Wrong metric value\n",
 				contentType: "text/plain; charset=utf-8",
 			},
@@ -62,7 +62,7 @@ func TestMetricHandle(t *testing.T) {
 			name: "wrong counter value float",
 			url:  "/update/counter/test-name/0.01",
 			want: want{
-				code:        400,
+				code:        http.StatusBadRequest,
 				response:    "Wrong metric value\n",
 				contentType: "text/plain; charset=utf-8",
 			},
@@ -71,7 +71,7 @@ func TestMetricHandle(t *testing.T) {
 			name: "invalid gauge type string",
 			url:  "/update/gauge/test-name/invalid-value",
 			want: want{
-				code:        400,
+				code:        http.StatusBadRequest,
 				response:    "Wrong metric value\n",
 				contentType: "text/plain; charset=utf-8",
 			},
@@ -80,7 +80,7 @@ func TestMetricHandle(t *testing.T) {
 			name: "correct gauge",
 			url:  "/update/gauge/test-name/0.01",
 			want: want{
-				code:        200,
+				code:        http.StatusOK,
 				response:    "",
 				contentType: "text/plain; charset=utf-8",
 			},
@@ -89,7 +89,7 @@ func TestMetricHandle(t *testing.T) {
 			name: "correct counter",
 			url:  "/update/counter/test-name/10",
 			want: want{
-				code:        200,
+				code:        http.StatusOK,
 				response:    "",
 				contentType: "text/plain; charset=utf-8",
 			},

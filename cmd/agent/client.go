@@ -1,10 +1,12 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/go-resty/resty/v2"
 )
+
+type Client struct {
+	restClient *resty.Client
+}
 
 type UpdateParams struct {
 	MetricName  string
@@ -12,8 +14,12 @@ type UpdateParams struct {
 	MetricValue string
 }
 
-func MakeRequest(client *resty.Client, params *UpdateParams) {
-	_, err := client.R().
+func NewClient(client *resty.Client) *Client {
+	return &Client{restClient: client}
+}
+
+func (c *Client) MakeRequest(params *UpdateParams) (*resty.Response, error) {
+	return c.restClient.R().
 		SetHeader("Content-Type", "text/plain").
 		SetBody("").
 		SetPathParams(map[string]string{
@@ -24,7 +30,4 @@ func MakeRequest(client *resty.Client, params *UpdateParams) {
 		}).
 		Post("http://{address}/update/{type}/{name}/{value}")
 
-	if err != nil {
-		fmt.Println(err)
-	}
 }
