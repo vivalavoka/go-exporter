@@ -195,8 +195,16 @@ func MetricHandleFromBody(w http.ResponseWriter, r *http.Request) {
 
 	switch metric.MType {
 	case GaugeType:
+		if metric.Value == nil {
+			var v storage.Gauge
+			metric.Value = &v
+		}
 		repo.SaveGauge(metric.ID, storage.Gauge(*metric.Value))
 	case CounterType:
+		if metric.Delta == nil {
+			var v storage.Counter
+			metric.Delta = &v
+		}
 		repo.SaveCounter(metric.ID, storage.Counter(*metric.Delta))
 	default:
 		http.Error(w, "Wrong metric type", http.StatusNotImplemented)
