@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"math/rand"
 	"runtime"
 
@@ -22,10 +23,16 @@ type Metrics struct {
 
 func ReportMetrics(client *Client, metrics []Metrics) {
 	for _, item := range metrics {
-		_, err := client.MakeRequest(&item)
+		body, err := json.Marshal(&item)
 
 		if err != nil {
 			log.Error(err)
+		}
+
+		_, reqErr := client.MakeRequest(body)
+
+		if reqErr != nil {
+			log.Error(reqErr)
 		}
 	}
 }
