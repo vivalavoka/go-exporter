@@ -27,6 +27,7 @@ func ReportMetrics(client *Client, metrics []Metrics) {
 
 		if err != nil {
 			log.Error(err)
+			continue
 		}
 
 		_, reqErr := client.MakeRequest(body)
