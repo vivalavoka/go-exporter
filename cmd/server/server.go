@@ -14,7 +14,7 @@ type Server struct {
 	storage *storage.Storage
 }
 
-func (s *Server) Start() {
+func (s *Server) Start(config Config) {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
@@ -25,5 +25,5 @@ func (s *Server) Start() {
 	handlers.GetAllMetricsRoute(r)
 	handlers.GetMetricRoute(r)
 
-	http.ListenAndServe(":8080", r)
+	http.ListenAndServe(config.Address, r)
 }
