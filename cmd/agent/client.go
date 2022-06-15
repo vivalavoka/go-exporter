@@ -17,7 +17,7 @@ func (c *Client) MakeRequest(body []byte) (*resty.Response, error) {
 		SetHeader("Content-Type", "application/json").
 		SetBody(body).
 		SetPathParams(map[string]string{
-			"address": reportAddress,
+			"address": config.Address,
 		}).
 		Post("http://{address}/update/")
 }

@@ -6,12 +6,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const (
-	pollInterval   = 2 * time.Second
-	reportInterval = 10 * time.Second
-	reportAddress  = "127.0.0.1:8080"
-)
-
 type Agent struct {
 	client    *Client
 	pollCount counter
@@ -26,8 +20,8 @@ func NewAgent(client *Client) *Agent {
 }
 
 func (a *Agent) Start() {
-	pollTicker := time.NewTicker(pollInterval)
-	reportTicker := time.NewTicker(reportInterval)
+	pollTicker := time.NewTicker(time.Duration(config.PollInterval) * time.Second)
+	reportTicker := time.NewTicker(time.Duration(config.ReportInterval) * time.Second)
 	defer pollTicker.Stop()
 	defer reportTicker.Stop()
 
