@@ -20,8 +20,8 @@ func NewAgent(client *Client) *Agent {
 }
 
 func (a *Agent) Start() {
-	pollTicker := time.NewTicker(time.Duration(config.PollInterval) * time.Second)
-	reportTicker := time.NewTicker(time.Duration(config.ReportInterval) * time.Second)
+	pollTicker := time.NewTicker(config.PollInterval)
+	reportTicker := time.NewTicker(config.ReportInterval)
 	defer pollTicker.Stop()
 	defer reportTicker.Stop()
 
