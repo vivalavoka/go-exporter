@@ -32,11 +32,8 @@ func (s *Storage) GetMetric(name string) (Metric, error) {
 func (s *Storage) Save(metric Metric) error {
 	value, ok := s.metrics[metric.ID]
 	if metric.MType == CounterType && ok {
-		var delta Counter
-		delta = *metric.Delta + *value.Delta
-		value.Delta = &delta
-	} else {
-		s.metrics[metric.ID] = metric
+		*value.Delta += *metric.Delta
 	}
+	s.metrics[metric.ID] = metric
 	return nil
 }
