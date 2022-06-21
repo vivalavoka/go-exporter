@@ -133,7 +133,7 @@ func MetricHandle(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Wrong metric value", http.StatusBadRequest)
 			return
 		}
-		repo.Save(Metric{
+		repo.Save(&Metric{
 			ID:    params.MetricName,
 			MType: params.MetricType,
 			Value: (*Gauge)(&value),
@@ -144,7 +144,7 @@ func MetricHandle(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Wrong metric value", http.StatusBadRequest)
 			return
 		}
-		repo.Save(Metric{
+		repo.Save(&Metric{
 			ID:    params.MetricName,
 			MType: params.MetricType,
 			Delta: (*Counter)(&value),
@@ -161,7 +161,9 @@ func MetricHandle(w http.ResponseWriter, r *http.Request) {
 
 func MetricHandleFromBody(w http.ResponseWriter, r *http.Request) {
 	repo := GetStorage()
-	params := Metric{}
+
+	var params *Metric
+
 	err := json.NewDecoder(r.Body).Decode(&params)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
