@@ -1,9 +1,6 @@
-package storage
+package main
 
 import "fmt"
-
-type Gauge float64
-type Counter int64
 
 type Storage struct {
 	Gauges   map[string]Gauge
