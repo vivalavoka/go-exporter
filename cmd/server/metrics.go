@@ -6,7 +6,7 @@ type Counter int64
 const GaugeType = "gauge"
 const CounterType = "counter"
 
-type Metrics struct {
+type Metric struct {
 	ID    string   `json:"id"`              // имя метрики
 	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
 	Delta *Counter `json:"delta,omitempty"` // значение метрики в случае передачи counter

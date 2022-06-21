@@ -33,14 +33,13 @@ func GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 		PageTitle: "Exporter metrics",
 	}
 
-	gauges := repo.GetGaugeMetrics()
-	for name, value := range gauges {
-		data.Metrics = append(data.Metrics, MetricData{name, fmt.Sprintf("%.3f", value)})
-	}
-
-	counters := repo.GetCounterMetrics()
-	for name, value := range counters {
-		data.Metrics = append(data.Metrics, MetricData{name, fmt.Sprintf("%d", value)})
+	metrics := repo.GetMetrics()
+	for name, value := range metrics {
+		if value.MType == GaugeType {
+			data.Metrics = append(data.Metrics, MetricData{name, fmt.Sprintf("%.3f", *value.Value)})
+		} else {
+			data.Metrics = append(data.Metrics, MetricData{name, fmt.Sprintf("%d", *value.Delta)})
+		}
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -59,7 +58,7 @@ func GetMetric(w http.ResponseWriter, r *http.Request) {
 
 	switch params.MetricType {
 	case GaugeType:
-		value, err := repo.GetMetricGauge(params.MetricName)
+		value, err := repo.GetMetric(params.MetricName)
 		if err != nil {
 			w.WriteHeader(http.StatusNotFound)
 			w.Write([]byte(err.Error()))
@@ -67,9 +66,9 @@ func GetMetric(w http.ResponseWriter, r *http.Request) {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(fmt.Sprintf("%.3f", value)))
+		w.Write([]byte(fmt.Sprintf("%.3f", *value.Value)))
 	case CounterType:
-		value, err := repo.GetMetricCounter(params.MetricName)
+		value, err := repo.GetMetric(params.MetricName)
 		if err != nil {
 			w.WriteHeader(http.StatusNotFound)
 			w.Write([]byte(err.Error()))
@@ -77,7 +76,7 @@ func GetMetric(w http.ResponseWriter, r *http.Request) {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(fmt.Sprintf("%d", value)))
+		w.Write([]byte(fmt.Sprintf("%d", *value.Delta)))
 	default:
 		http.Error(w, "Wrong metric type", http.StatusNotImplemented)
 		return
@@ -86,56 +85,36 @@ func GetMetric(w http.ResponseWriter, r *http.Request) {
 
 func GetMetricFromBody(w http.ResponseWriter, r *http.Request) {
 	repo := GetStorage()
-	var metric Metrics
+	var params Metric
 
-	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if params.MType != CounterType && params.MType != GaugeType {
+		http.Error(w, "Wrong metric type", http.StatusNotImplemented)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
-	switch metric.MType {
-	case GaugeType:
-		value, err := repo.GetMetricGauge(metric.ID)
-		if err != nil {
-			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(err.Error()))
-			return
-		}
-
-		metric.Value = &value
-		response, err := json.Marshal(metric)
-		if err != nil {
-			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(err.Error()))
-			return
-		}
-
-		w.WriteHeader(http.StatusOK)
-		w.Write(response)
-	case CounterType:
-		value, err := repo.GetMetricCounter(metric.ID)
-		if err != nil {
-			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(err.Error()))
-			return
-		}
-
-		metric.Delta = &value
-		response, err := json.Marshal(metric)
-		if err != nil {
-			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(err.Error()))
-			return
-		}
-
-		w.WriteHeader(http.StatusOK)
-		w.Write(response)
-	default:
-		http.Error(w, "Wrong metric type", http.StatusNotImplemented)
+	metric, err := repo.GetMetric(params.ID)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(err.Error()))
 		return
 	}
+
+	response, err := json.Marshal(metric)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(response)
 }
 
 // MetricHandle — обработчик запроса.
@@ -154,14 +133,22 @@ func MetricHandle(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Wrong metric value", http.StatusBadRequest)
 			return
 		}
-		repo.SaveGauge(params.MetricName, Gauge(value))
+		repo.Save(Metric{
+			ID:    params.MetricName,
+			MType: params.MetricType,
+			Value: (*Gauge)(&value),
+		})
 	case CounterType:
 		value, err := strconv.ParseInt(params.MetricValue, 10, 64)
 		if err != nil {
 			http.Error(w, "Wrong metric value", http.StatusBadRequest)
 			return
 		}
-		repo.SaveCounter(params.MetricName, Counter(value))
+		repo.Save(Metric{
+			ID:    params.MetricName,
+			MType: params.MetricType,
+			Delta: (*Counter)(&value),
+		})
 	default:
 		http.Error(w, "Wrong metric type", http.StatusNotImplemented)
 		return
@@ -174,30 +161,29 @@ func MetricHandle(w http.ResponseWriter, r *http.Request) {
 
 func MetricHandleFromBody(w http.ResponseWriter, r *http.Request) {
 	repo := GetStorage()
-	metric := Metrics{}
-	err := json.NewDecoder(r.Body).Decode(&metric)
+	params := Metric{}
+	err := json.NewDecoder(r.Body).Decode(&params)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	switch metric.MType {
+	switch params.MType {
 	case GaugeType:
-		if metric.Value == nil {
+		if params.Value == nil {
 			var v Gauge
-			metric.Value = &v
+			params.Value = &v
 		}
-		repo.SaveGauge(metric.ID, Gauge(*metric.Value))
 	case CounterType:
-		if metric.Delta == nil {
+		if params.Delta == nil {
 			var v Counter
-			metric.Delta = &v
+			params.Delta = &v
 		}
-		repo.SaveCounter(metric.ID, Counter(*metric.Delta))
 	default:
 		http.Error(w, "Wrong metric type", http.StatusNotImplemented)
 		return
 	}
+	repo.Save(params)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
