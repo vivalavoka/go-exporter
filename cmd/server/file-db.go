@@ -45,14 +45,11 @@ func (db *FileDB) RunTicker() {
 		return
 	}
 
-	storage := GetStorage()
 	ticker := time.NewTicker(db.config.StoreInterval)
-	for {
-		select {
-		case <-ticker.C:
-			metrics := storage.GetMetrics()
-			db.Write(metrics)
-		}
+	for range ticker.C {
+		storage := GetStorage()
+		metrics := storage.GetMetrics()
+		db.Write(metrics)
 	}
 }
 
