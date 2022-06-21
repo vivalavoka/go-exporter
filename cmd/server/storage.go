@@ -7,7 +7,7 @@ import (
 )
 
 type Storage struct {
-	cfg     *Config
+	config  Config
 	fileDB  *FileDB
 	metrics map[string]Metric
 }
@@ -22,14 +22,19 @@ func NewStorage(config Config) *Storage {
 		_metrics, err := fileDB.Read()
 		if err != nil {
 			log.Error(err)
+		} else {
+			metrics = _metrics
 		}
-		metrics = _metrics
 	}
 
 	storage = &Storage{
-		cfg:     &config,
+		config:  config,
 		fileDB:  fileDB,
 		metrics: metrics,
+	}
+
+	if config.StoreInterval != 0 {
+		go fileDB.RunTicker()
 	}
 
 	return storage
@@ -37,6 +42,12 @@ func NewStorage(config Config) *Storage {
 
 func GetStorage() *Storage {
 	return storage
+}
+
+func (s *Storage) DropCache() {
+	if err := s.fileDB.Write(s.metrics); err != nil {
+		log.Error(err)
+	}
 }
 
 func (s *Storage) Close() {
@@ -61,8 +72,8 @@ func (s *Storage) Save(metric *Metric) error {
 	}
 	s.metrics[metric.ID] = *metric
 
-	if s.cfg.StoreInterval == 0 {
-		if err := s.fileDB.SyncWrite(s.metrics); err != nil {
+	if s.config.StoreInterval == 0 {
+		if err := s.fileDB.Write(s.metrics); err != nil {
 			log.Error(err)
 		}
 	}
