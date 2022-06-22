@@ -4,19 +4,11 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/vivalavoka/go-exporter/cmd/server/config"
 	server "github.com/vivalavoka/go-exporter/cmd/server/http"
 	"github.com/vivalavoka/go-exporter/cmd/server/storage"
 )
-
-type Config struct {
-	Address       string        `env:"ADDRESS"`
-	StoreInterval time.Duration `env:"STORE_INTERVAL"`
-	StoreFile     string        `env:"STORE_FILE"`
-	Restore       bool          `env:"RESTORE"`
-}
 
 func main() {
 	config := config.Get()
