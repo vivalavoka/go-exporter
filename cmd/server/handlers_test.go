@@ -25,6 +25,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.
 }
 
 func TestMetricHandle(t *testing.T) {
+	NewStorage(Config{})
 	r := chi.NewRouter()
 	UpdateMetricRoute(r)
 	ts := httptest.NewServer(r)
@@ -78,7 +79,7 @@ func TestMetricHandle(t *testing.T) {
 		},
 		{
 			name: "correct gauge",
-			url:  "/update/gauge/test-name/0.01",
+			url:  "/update/gauge/test-gauge/0.01",
 			want: want{
 				code:        http.StatusOK,
 				response:    "",
@@ -87,7 +88,7 @@ func TestMetricHandle(t *testing.T) {
 		},
 		{
 			name: "correct counter",
-			url:  "/update/counter/test-name/10",
+			url:  "/update/counter/test-counter/10",
 			want: want{
 				code:        http.StatusOK,
 				response:    "",
