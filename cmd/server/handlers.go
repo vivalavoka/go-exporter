@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"text/template"
 
@@ -29,6 +30,13 @@ type MetricsPageData struct {
 
 func GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 	repo := GetStorage()
+	layoutPath, err := filepath.Abs("layouts/metrics.html")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	log.Info(layoutPath)
 	tmpl := template.Must(template.ParseFiles("layouts/metrics.html"))
 	data := MetricsPageData{
 		PageTitle: "Exporter metrics",
