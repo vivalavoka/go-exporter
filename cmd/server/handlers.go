@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"text/template"
@@ -30,14 +32,15 @@ type MetricsPageData struct {
 
 func GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 	repo := GetStorage()
-	layoutPath, err := filepath.Abs("layouts/metrics.html")
+	ex, err := os.Executable()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 		return
 	}
+	layoutPath := path.Join(filepath.Dir(ex), "layouts/metrics.html")
 	log.Info(layoutPath)
-	tmpl := template.Must(template.ParseFiles("layouts/metrics.html"))
+	tmpl := template.Must(template.ParseFiles(layoutPath))
 	data := MetricsPageData{
 		PageTitle: "Exporter metrics",
 	}
@@ -50,8 +53,6 @@ func GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 			data.Metrics = append(data.Metrics, MetricData{name, fmt.Sprintf("%d", *value.Delta)})
 		}
 	}
-	log.Info(w.Header().Get("Content-Type"))
-	log.Info(data)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	tmpl.Execute(w, data)
