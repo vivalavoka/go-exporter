@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"math/rand"
 	"time"
 
@@ -11,18 +12,24 @@ import (
 )
 
 type Config struct {
-	Address        string        `env:"ADDRESS" envDefault:"127.0.0.1:8080"`
-	ReportInterval time.Duration `env:"REPORT_INTERVAL" envDefault:"10s"`
-	PollInterval   time.Duration `env:"POLL_INTERVAL" envDefault:"2s"`
+	Address        string        `env:"ADDRESS"`
+	ReportInterval time.Duration `env:"REPORT_INTERVAL"`
+	PollInterval   time.Duration `env:"POLL_INTERVAL"`
 }
 
 var config Config
 
 func main() {
+	flag.StringVar(&config.Address, "a", "127.0.0.1:8080", "server address")
+	flag.DurationVar(&config.ReportInterval, "r", time.Duration(10*time.Second), "report interval")
+	flag.DurationVar(&config.PollInterval, "p", time.Duration(2*time.Second), "poll interval")
+	flag.Parse()
+
 	err := env.Parse(&config)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	log.Info(config)
 
 	rand.Seed(time.Now().Unix())
