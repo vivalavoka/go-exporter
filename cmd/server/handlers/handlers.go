@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"encoding/json"
@@ -11,6 +11,8 @@ import (
 	"text/template"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/vivalavoka/go-exporter/cmd/server/metrics"
+	"github.com/vivalavoka/go-exporter/cmd/server/storage"
 )
 
 type UpdateParams struct {
@@ -30,22 +32,22 @@ type MetricsPageData struct {
 }
 
 func GetAllMetrics(w http.ResponseWriter, r *http.Request) {
-	repo := GetStorage()
+	repo := storage.GetStorage()
 	ex, err := os.Executable()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 		return
 	}
-	layoutPath := path.Join(filepath.Dir(ex), "layouts/metrics.html")
+	layoutPath := path.Join(filepath.Dir(ex), "handlers/layouts/metrics.html")
 	tmpl := template.Must(template.ParseFiles(layoutPath))
 	data := MetricsPageData{
 		PageTitle: "Exporter metrics",
 	}
 
-	metrics := repo.GetMetrics()
-	for name, value := range metrics {
-		if value.MType == GaugeType {
+	metricList := repo.GetMetrics()
+	for name, value := range metricList {
+		if value.MType == metrics.GaugeType {
 			data.Metrics = append(data.Metrics, MetricData{name, fmt.Sprintf("%.3f", *value.Value)})
 		} else {
 			data.Metrics = append(data.Metrics, MetricData{name, fmt.Sprintf("%d", *value.Delta)})
@@ -57,7 +59,7 @@ func GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetMetric(w http.ResponseWriter, r *http.Request) {
-	repo := GetStorage()
+	repo := storage.GetStorage()
 	params := UpdateParams{
 		MetricType: chi.URLParam(r, "type"),
 		MetricName: chi.URLParam(r, "name"),
@@ -66,7 +68,7 @@ func GetMetric(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 
 	switch params.MetricType {
-	case GaugeType:
+	case metrics.GaugeType:
 		value, err := repo.GetMetric(params.MetricName)
 		if err != nil {
 			w.WriteHeader(http.StatusNotFound)
@@ -76,7 +78,7 @@ func GetMetric(w http.ResponseWriter, r *http.Request) {
 
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(fmt.Sprintf("%.3f", *value.Value)))
-	case CounterType:
+	case metrics.CounterType:
 		value, err := repo.GetMetric(params.MetricName)
 		if err != nil {
 			w.WriteHeader(http.StatusNotFound)
@@ -93,15 +95,15 @@ func GetMetric(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetMetricFromBody(w http.ResponseWriter, r *http.Request) {
-	repo := GetStorage()
-	var params Metric
+	repo := storage.GetStorage()
+	var params metrics.Metric
 
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if params.MType != CounterType && params.MType != GaugeType {
+	if params.MType != metrics.CounterType && params.MType != metrics.GaugeType {
 		http.Error(w, "Wrong metric type", http.StatusNotImplemented)
 		return
 	}
@@ -128,7 +130,7 @@ func GetMetricFromBody(w http.ResponseWriter, r *http.Request) {
 
 // MetricHandle — обработчик запроса.
 func MetricHandle(w http.ResponseWriter, r *http.Request) {
-	repo := GetStorage()
+	repo := storage.GetStorage()
 	params := UpdateParams{
 		MetricType:  chi.URLParam(r, "type"),
 		MetricName:  chi.URLParam(r, "name"),
@@ -136,27 +138,27 @@ func MetricHandle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch params.MetricType {
-	case GaugeType:
+	case metrics.GaugeType:
 		value, err := strconv.ParseFloat(params.MetricValue, 64)
 		if err != nil {
 			http.Error(w, "Wrong metric value", http.StatusBadRequest)
 			return
 		}
-		repo.Save(&Metric{
+		repo.Save(&metrics.Metric{
 			ID:    params.MetricName,
 			MType: params.MetricType,
-			Value: (*Gauge)(&value),
+			Value: (*metrics.Gauge)(&value),
 		})
-	case CounterType:
+	case metrics.CounterType:
 		value, err := strconv.ParseInt(params.MetricValue, 10, 64)
 		if err != nil {
 			http.Error(w, "Wrong metric value", http.StatusBadRequest)
 			return
 		}
-		repo.Save(&Metric{
+		repo.Save(&metrics.Metric{
 			ID:    params.MetricName,
 			MType: params.MetricType,
-			Delta: (*Counter)(&value),
+			Delta: (*metrics.Counter)(&value),
 		})
 	default:
 		http.Error(w, "Wrong metric type", http.StatusNotImplemented)
@@ -169,9 +171,9 @@ func MetricHandle(w http.ResponseWriter, r *http.Request) {
 }
 
 func MetricHandleFromBody(w http.ResponseWriter, r *http.Request) {
-	repo := GetStorage()
+	repo := storage.GetStorage()
 
-	var params *Metric
+	var params *metrics.Metric
 
 	err := json.NewDecoder(r.Body).Decode(&params)
 	if err != nil {
@@ -180,14 +182,14 @@ func MetricHandleFromBody(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch params.MType {
-	case GaugeType:
+	case metrics.GaugeType:
 		if params.Value == nil {
-			var v Gauge
+			var v metrics.Gauge
 			params.Value = &v
 		}
-	case CounterType:
+	case metrics.CounterType:
 		if params.Delta == nil {
-			var v Counter
+			var v metrics.Counter
 			params.Delta = &v
 		}
 	default:
