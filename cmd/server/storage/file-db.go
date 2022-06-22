@@ -1,4 +1,4 @@
-package main
+package storage
 
 import (
 	"encoding/json"
@@ -6,10 +6,12 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/vivalavoka/go-exporter/cmd/server/config"
+	"github.com/vivalavoka/go-exporter/cmd/server/metrics"
 )
 
 type FileDB struct {
-	config  Config
+	config  config.Config
 	file    *os.File
 	encoder *json.Encoder
 	decoder *json.Decoder
@@ -17,7 +19,7 @@ type FileDB struct {
 
 var fileDB *FileDB
 
-func NewDB(config Config) *FileDB {
+func NewDB(config config.Config) *FileDB {
 	if config.StoreFile == "" {
 		return &FileDB{}
 	}
@@ -59,34 +61,34 @@ func (db *FileDB) Close() {
 	}
 }
 
-func (db *FileDB) Read() (map[string]Metric, error) {
-	var metrics []Metric
-	metricMap := map[string]Metric{}
+func (db *FileDB) Read() (map[string]metrics.Metric, error) {
+	var metricList []metrics.Metric
+	metricMap := map[string]metrics.Metric{}
 
 	if db.config.StoreFile == "" {
 		return metricMap, nil
 	}
 
-	if err := db.decoder.Decode(&metrics); err != nil {
+	if err := db.decoder.Decode(&metricList); err != nil {
 		return nil, err
 	}
 
-	for _, value := range metrics {
+	for _, value := range metricList {
 		metricMap[value.ID] = value
 	}
 	return metricMap, nil
 }
 
-func (db *FileDB) Write(metricMap map[string]Metric) error {
+func (db *FileDB) Write(metricMap map[string]metrics.Metric) error {
 	if db.config.StoreFile == "" {
 		return nil
 	}
 
-	var metrics []Metric
+	var metricList []metrics.Metric
 	for _, value := range metricMap {
-		metrics = append(metrics, value)
+		metricList = append(metricList, value)
 	}
 
 	db.file.Seek(0, 0)
-	return db.encoder.Encode(&metrics)
+	return db.encoder.Encode(&metricList)
 }
