@@ -8,6 +8,7 @@ import (
 	"text/template"
 
 	"github.com/go-chi/chi/v5"
+	log "github.com/sirupsen/logrus"
 )
 
 type UpdateParams struct {
@@ -41,7 +42,8 @@ func GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 			data.Metrics = append(data.Metrics, MetricData{name, fmt.Sprintf("%d", *value.Delta)})
 		}
 	}
-
+	log.Info(w.Header().Get("Content-Type"))
+	log.Info(data)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	tmpl.Execute(w, data)
