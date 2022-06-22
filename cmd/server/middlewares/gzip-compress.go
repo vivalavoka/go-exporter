@@ -19,6 +19,17 @@ func (w gzipWriter) Write(b []byte) (int, error) {
 
 func GzipHandle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get(`Content-Encoding`) == `gzip` {
+			gzb, err := gzip.NewReader(r.Body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			r.Body = gzb
+
+			defer gzb.Close()
+		}
+
 		// проверяем, что клиент поддерживает gzip-сжатие
 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 			// если gzip не поддерживается, передаём управление
@@ -36,16 +47,6 @@ func GzipHandle(next http.Handler) http.Handler {
 		defer gz.Close()
 
 		w.Header().Set("Content-Encoding", "gzip")
-
-		if r.Header.Get(`Content-Encoding`) == `gzip` {
-			gzb, err := gzip.NewReader(r.Body)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			r.Body = gzb
-			defer gzb.Close()
-		}
 
 		// передаём обработчику страницы переменную типа gzipWriter для вывода данных
 		next.ServeHTTP(gzipWriter{ResponseWriter: w, Writer: gz}, r)
