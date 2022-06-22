@@ -18,6 +18,7 @@ func (s *Server) Start(config Config) {
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(middleware.Compress(5))
 	r.Use(middlewares.GzipHandle)
 
 	UpdateMetricRoute(r)

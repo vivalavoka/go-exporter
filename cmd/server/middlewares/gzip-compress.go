@@ -4,7 +4,6 @@ import (
 	"compress/gzip"
 	"io"
 	"net/http"
-	"strings"
 )
 
 type gzipWriter struct {
@@ -19,7 +18,7 @@ func (w gzipWriter) Write(b []byte) (int, error) {
 
 func GzipHandle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
+		if r.Header.Get("Content-Encoding") == "gzip" {
 			gzb, err := gzip.NewReader(r.Body)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -30,25 +29,27 @@ func GzipHandle(next http.Handler) http.Handler {
 			defer gzb.Close()
 		}
 
-		// проверяем, что клиент поддерживает gzip-сжатие
-		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-			// если gzip не поддерживается, передаём управление
-			// дальше без изменений
-			next.ServeHTTP(w, r)
-			return
-		}
+		next.ServeHTTP(w, r)
 
-		// создаём gzip.Writer поверх текущего w
-		gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		defer gz.Close()
+		// // проверяем, что клиент поддерживает gzip-сжатие
+		// if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+		// 	// если gzip не поддерживается, передаём управление
+		// 	// дальше без изменений
+		// 	next.ServeHTTP(w, r)
+		// 	return
+		// }
 
-		w.Header().Set("Content-Encoding", "gzip")
+		// // создаём gzip.Writer поверх текущего w
+		// gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
+		// if err != nil {
+		// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+		// 	return
+		// }
+		// defer gz.Close()
 
-		// передаём обработчику страницы переменную типа gzipWriter для вывода данных
-		next.ServeHTTP(gzipWriter{ResponseWriter: w, Writer: gz}, r)
+		// w.Header().Set("Content-Encoding", "gzip")
+
+		// // передаём обработчику страницы переменную типа gzipWriter для вывода данных
+		// next.ServeHTTP(gzipWriter{ResponseWriter: w, Writer: gz}, r)
 	})
 }
