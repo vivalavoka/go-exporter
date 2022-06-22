@@ -11,7 +11,6 @@ import (
 	"text/template"
 
 	"github.com/go-chi/chi/v5"
-	log "github.com/sirupsen/logrus"
 )
 
 type UpdateParams struct {
@@ -39,7 +38,6 @@ func GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	layoutPath := path.Join(filepath.Dir(ex), "layouts/metrics.html")
-	log.Info(layoutPath)
 	tmpl := template.Must(template.ParseFiles(layoutPath))
 	data := MetricsPageData{
 		PageTitle: "Exporter metrics",
