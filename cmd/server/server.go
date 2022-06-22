@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/vivalavoka/go-exporter/cmd/server/middlewares"
 )
 
 type Server struct {
@@ -17,7 +18,7 @@ func (s *Server) Start(config Config) {
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-	r.Use(middleware.Compress(5))
+	r.Use(middlewares.GzipHandle)
 
 	UpdateMetricRoute(r)
 	GetAllMetricsRoute(r)
