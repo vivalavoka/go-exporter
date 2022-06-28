@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"runtime"
 
@@ -19,6 +20,17 @@ type Metrics struct {
 	MType string  `json:"type"`            // параметр, принимающий значение gauge или counter
 	Delta counter `json:"delta,omitempty"` // значение метрики в случае передачи counter
 	Value gauge   `json:"value,omitempty"` // значение метрики в случае передачи gauge
+	Hash  string  `json:"hash,omitempty"`
+}
+
+func (m Metrics) ForSHA() string {
+	switch m.MType {
+	case GaugeType:
+		return fmt.Sprintf("%s:%s:%.3f", m.ID, m.MType, m.Value)
+	case CounterType:
+		return fmt.Sprintf("%s:%s:%d", m.ID, m.MType, m.Delta)
+	}
+	return ""
 }
 
 func ReportMetrics(client *Client, metrics []Metrics) {
@@ -73,6 +85,10 @@ func GetMetrics(pollCount counter) []Metrics {
 		{ID: "Sys", MType: GaugeType, Value: gauge(stats.Sys)},
 		{ID: "TotalAlloc", MType: GaugeType, Value: gauge(stats.TotalAlloc)},
 		{ID: "RandomValue", MType: GaugeType, Value: gauge(random)},
+	}
+
+	for _, metric := range metrics {
+		metric.Hash = GetSHA256(metric.ForSHA())
 	}
 
 	return metrics
