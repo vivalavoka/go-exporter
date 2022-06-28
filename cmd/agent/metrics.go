@@ -42,7 +42,6 @@ func GetMetrics(pollCount counter) []Metrics {
 	var stats runtime.MemStats
 	runtime.ReadMemStats(&stats)
 	random := rand.Float64()
-	log.Info(random)
 
 	metrics := []Metrics{
 		{ID: "PollCount", MType: CounterType, Delta: pollCount},
