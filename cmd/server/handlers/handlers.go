@@ -11,9 +11,15 @@ import (
 	"text/template"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/vivalavoka/go-exporter/cmd/server/config"
+	"github.com/vivalavoka/go-exporter/cmd/server/crypto"
 	"github.com/vivalavoka/go-exporter/cmd/server/metrics"
 	"github.com/vivalavoka/go-exporter/cmd/server/storage"
 )
+
+type Handlers struct {
+	hasher *crypto.SHA256
+}
 
 type UpdateParams struct {
 	MetricName  string
@@ -31,7 +37,12 @@ type MetricsPageData struct {
 	Metrics   []MetricData
 }
 
-func GetAllMetrics(w http.ResponseWriter, r *http.Request) {
+func New(cfg config.Config) *Handlers {
+	hasher := crypto.New(cfg)
+	return &Handlers{hasher}
+}
+
+func (h *Handlers) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 	repo := storage.GetStorage()
 	ex, err := os.Executable()
 	if err != nil {
@@ -58,7 +69,7 @@ func GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 	tmpl.Execute(w, data)
 }
 
-func GetMetric(w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) GetMetric(w http.ResponseWriter, r *http.Request) {
 	repo := storage.GetStorage()
 	params := UpdateParams{
 		MetricType: chi.URLParam(r, "type"),
@@ -94,7 +105,7 @@ func GetMetric(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func GetMetricFromBody(w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) GetMetricFromBody(w http.ResponseWriter, r *http.Request) {
 	repo := storage.GetStorage()
 	var params metrics.Metric
 
@@ -111,6 +122,9 @@ func GetMetricFromBody(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 	metric, err := repo.GetMetric(params.ID)
+	if h.hasher.Enable {
+		metric.Hash = h.hasher.GetSum(fmt.Sprintln(metric))
+	}
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(err.Error()))
@@ -129,7 +143,7 @@ func GetMetricFromBody(w http.ResponseWriter, r *http.Request) {
 }
 
 // MetricHandle — обработчик запроса.
-func MetricHandle(w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) MetricHandle(w http.ResponseWriter, r *http.Request) {
 	repo := storage.GetStorage()
 	params := UpdateParams{
 		MetricType:  chi.URLParam(r, "type"),
@@ -170,7 +184,7 @@ func MetricHandle(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(""))
 }
 
-func MetricHandleFromBody(w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) MetricHandleFromBody(w http.ResponseWriter, r *http.Request) {
 	repo := storage.GetStorage()
 
 	var params *metrics.Metric
@@ -196,6 +210,15 @@ func MetricHandleFromBody(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Wrong metric type", http.StatusNotImplemented)
 		return
 	}
+
+	if h.hasher.Enable {
+		hash := h.hasher.GetSum(fmt.Sprintf("%s", params))
+		if hash != params.Hash {
+			http.Error(w, "Wrong hash", http.StatusBadRequest)
+			return
+		}
+	}
+
 	repo.Save(params)
 
 	w.Header().Set("Content-Type", "application/json")

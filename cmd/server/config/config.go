@@ -13,6 +13,7 @@ type Config struct {
 	StoreInterval time.Duration `env:"STORE_INTERVAL"`
 	StoreFile     string        `env:"STORE_FILE"`
 	Restore       bool          `env:"RESTORE"`
+	SHAKey        string        `env:"KEY"`
 }
 
 func Get() Config {
@@ -21,6 +22,7 @@ func Get() Config {
 	flag.DurationVar(&config.StoreInterval, "i", time.Duration(300*time.Millisecond), "store interval")
 	flag.StringVar(&config.StoreFile, "f", "/tmp/devops-metrics-db.json", "store file name")
 	flag.BoolVar(&config.Restore, "r", true, "need restore")
+	flag.StringVar(&config.SHAKey, "k", "", "sha key")
 	flag.Parse()
 
 	err := env.Parse(&config)

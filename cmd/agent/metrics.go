@@ -35,6 +35,7 @@ func (m Metrics) ForSHA() string {
 
 func ReportMetrics(client *Client, metrics []Metrics) {
 	for _, item := range metrics {
+		item.Hash = GetSHA256(item.ForSHA())
 		body, err := json.Marshal(&item)
 
 		if err != nil {
@@ -85,10 +86,6 @@ func GetMetrics(pollCount counter) []Metrics {
 		{ID: "Sys", MType: GaugeType, Value: gauge(stats.Sys)},
 		{ID: "TotalAlloc", MType: GaugeType, Value: gauge(stats.TotalAlloc)},
 		{ID: "RandomValue", MType: GaugeType, Value: gauge(random)},
-	}
-
-	for _, metric := range metrics {
-		metric.Hash = GetSHA256(metric.ForSHA())
 	}
 
 	return metrics
