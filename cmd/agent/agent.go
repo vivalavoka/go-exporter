@@ -13,10 +13,9 @@ const (
 )
 
 type Agent struct {
-	client         *Client
-	pollCount      counter
-	gaugeMetrics   []GaugeItem
-	counterMetrics []CounterItem
+	client    *Client
+	pollCount counter
+	metrics   []Metrics
 }
 
 func NewAgent(client *Client) *Agent {
@@ -36,11 +35,11 @@ func (a *Agent) Start() {
 		select {
 		case <-reportTicker.C:
 			log.Info("Report metrics")
-			ReportMetrics(a.client, a.gaugeMetrics, a.counterMetrics)
+			ReportMetrics(a.client, a.metrics)
 		case <-pollTicker.C:
 			log.Info("Get metrics")
 			a.pollCount += 1
-			a.gaugeMetrics, a.counterMetrics = GetMetrics(a.pollCount)
+			a.metrics = GetMetrics(a.pollCount)
 		}
 	}
 }
