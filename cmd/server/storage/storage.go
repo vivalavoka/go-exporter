@@ -1,21 +1,23 @@
-package main
+package storage
 
 import (
 	"fmt"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/vivalavoka/go-exporter/cmd/server/config"
+	"github.com/vivalavoka/go-exporter/cmd/server/metrics"
 )
 
 type Storage struct {
-	config  Config
+	config  config.Config
 	fileDB  *FileDB
-	metrics map[string]Metric
+	metrics map[string]metrics.Metric
 }
 
 var storage *Storage
 
-func NewStorage(config Config) *Storage {
-	metrics := map[string]Metric{}
+func NewStorage(config config.Config) *Storage {
+	metrics := map[string]metrics.Metric{}
 	fileDB := NewDB(config)
 
 	if config.Restore {
@@ -54,20 +56,20 @@ func (s *Storage) Close() {
 	s.fileDB.Close()
 }
 
-func (s *Storage) GetMetrics() map[string]Metric {
+func (s *Storage) GetMetrics() map[string]metrics.Metric {
 	return s.metrics
 }
 
-func (s *Storage) GetMetric(name string) (Metric, error) {
+func (s *Storage) GetMetric(name string) (metrics.Metric, error) {
 	if value, ok := s.metrics[name]; ok {
 		return value, nil
 	}
-	return Metric{}, fmt.Errorf("there is no metric by name: %s", name)
+	return metrics.Metric{}, fmt.Errorf("there is no metric by name: %s", name)
 }
 
-func (s *Storage) Save(metric *Metric) error {
+func (s *Storage) Save(metric *metrics.Metric) error {
 	value, ok := s.metrics[metric.ID]
-	if metric.MType == CounterType && ok {
+	if metric.MType == metrics.CounterType && ok {
 		*metric.Delta += *value.Delta
 	}
 	s.metrics[metric.ID] = *metric

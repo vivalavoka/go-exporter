@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"io/ioutil"
@@ -9,6 +9,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vivalavoka/go-exporter/cmd/server/config"
+	"github.com/vivalavoka/go-exporter/cmd/server/storage"
 )
 
 func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.Response, string) {
@@ -25,6 +27,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.
 }
 
 func TestMetricHandle(t *testing.T) {
+	storage.NewStorage(config.Config{})
 	r := chi.NewRouter()
 	UpdateMetricRoute(r)
 	ts := httptest.NewServer(r)
@@ -78,7 +81,7 @@ func TestMetricHandle(t *testing.T) {
 		},
 		{
 			name: "correct gauge",
-			url:  "/update/gauge/test-name/0.01",
+			url:  "/update/gauge/test-gauge/0.01",
 			want: want{
 				code:        http.StatusOK,
 				response:    "",
@@ -87,7 +90,7 @@ func TestMetricHandle(t *testing.T) {
 		},
 		{
 			name: "correct counter",
-			url:  "/update/counter/test-name/10",
+			url:  "/update/counter/test-counter/10",
 			want: want{
 				code:        http.StatusOK,
 				response:    "",
