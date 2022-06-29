@@ -7,7 +7,7 @@ import (
 
 func GetSHA256(str string) string {
 	h := sha256.New()
-	h.Write([]byte(config.SHAKey))
 	h.Write([]byte(str))
+	h.Write([]byte(config.SHAKey))
 	return fmt.Sprintf("%x", h.Sum(nil))
 }

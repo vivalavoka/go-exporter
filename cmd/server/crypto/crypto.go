@@ -23,7 +23,7 @@ func New(cfg config.Config) *SHA256 {
 
 func (s *SHA256) GetSum(str string) string {
 	h := sha256.New()
-	h.Write([]byte(s.key))
 	h.Write([]byte(str))
+	h.Write([]byte(s.key))
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
