@@ -12,26 +12,27 @@ import (
 )
 
 func main() {
-	config, err := config.Get()
-	if err != nil {
+	var err error
+	var cfg config.Config
+	var stg *storage.Storage
+
+	if cfg, err = config.Get(); err != nil {
 		log.Fatal(err)
 	}
 
-	storage, err := storage.New(config)
-	if err != nil {
+	if stg, err = storage.New(cfg); err != nil {
 		log.Fatal(err)
 	}
-
-	defer storage.Close()
+	defer stg.Close()
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		<-c
-		storage.DropCache()
+		stg.DropCache()
 		os.Exit(1)
 	}()
 
-	http := server.Server{}
-	http.Start(config)
+	http := server.New(stg)
+	http.Start(cfg)
 }

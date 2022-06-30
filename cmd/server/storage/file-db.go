@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/vivalavoka/go-exporter/cmd/server/config"
-	"github.com/vivalavoka/go-exporter/cmd/server/metrics"
+	"github.com/vivalavoka/go-exporter/internal/metrics"
 )
 
 type FileDB struct {

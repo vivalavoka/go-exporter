@@ -5,7 +5,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/vivalavoka/go-exporter/cmd/server/config"
-	"github.com/vivalavoka/go-exporter/cmd/server/metrics"
+	"github.com/vivalavoka/go-exporter/internal/metrics"
 )
 
 type Storage struct {
@@ -74,7 +74,7 @@ func (s *Storage) GetMetric(name string) (metrics.Metric, error) {
 func (s *Storage) Save(metric *metrics.Metric) error {
 	value, ok := s.metrics[metric.ID]
 	if metric.MType == metrics.CounterType && ok {
-		*metric.Delta += *value.Delta
+		metric.Delta += value.Delta
 	}
 	s.metrics[metric.ID] = *metric
 

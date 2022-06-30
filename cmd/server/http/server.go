@@ -15,6 +15,12 @@ type Server struct {
 	storage *storage.Storage
 }
 
+func New(storage *storage.Storage) *Server {
+	return &Server{
+		storage: storage,
+	}
+}
+
 func (s *Server) Start(cfg config.Config) {
 	r := chi.NewRouter()
 

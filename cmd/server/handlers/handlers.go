@@ -12,9 +12,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/vivalavoka/go-exporter/cmd/server/config"
-	"github.com/vivalavoka/go-exporter/cmd/server/crypto"
-	"github.com/vivalavoka/go-exporter/cmd/server/metrics"
 	"github.com/vivalavoka/go-exporter/cmd/server/storage"
+	"github.com/vivalavoka/go-exporter/internal/crypto"
+	"github.com/vivalavoka/go-exporter/internal/metrics"
 )
 
 type Handlers struct {
@@ -38,7 +38,7 @@ type MetricsPageData struct {
 }
 
 func New(cfg config.Config) *Handlers {
-	hasher := crypto.New(cfg)
+	hasher := crypto.New(cfg.SHAKey)
 	return &Handlers{hasher}
 }
 
@@ -59,9 +59,9 @@ func (h *Handlers) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 	metricList := repo.GetMetrics()
 	for name, value := range metricList {
 		if value.MType == metrics.GaugeType {
-			data.Metrics = append(data.Metrics, MetricData{name, fmt.Sprintf("%.3f", *value.Value)})
+			data.Metrics = append(data.Metrics, MetricData{name, fmt.Sprintf("%.3f", value.Value)})
 		} else {
-			data.Metrics = append(data.Metrics, MetricData{name, fmt.Sprintf("%d", *value.Delta)})
+			data.Metrics = append(data.Metrics, MetricData{name, fmt.Sprintf("%d", value.Delta)})
 		}
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -88,7 +88,7 @@ func (h *Handlers) GetMetric(w http.ResponseWriter, r *http.Request) {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(fmt.Sprintf("%.3f", *value.Value)))
+		w.Write([]byte(fmt.Sprintf("%.3f", value.Value)))
 	case metrics.CounterType:
 		value, err := repo.GetMetric(params.MetricName)
 		if err != nil {
@@ -98,7 +98,7 @@ func (h *Handlers) GetMetric(w http.ResponseWriter, r *http.Request) {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(fmt.Sprintf("%d", *value.Delta)))
+		w.Write([]byte(fmt.Sprintf("%d", value.Delta)))
 	default:
 		http.Error(w, "Wrong metric type", http.StatusNotImplemented)
 		return
@@ -161,7 +161,7 @@ func (h *Handlers) MetricHandle(w http.ResponseWriter, r *http.Request) {
 		repo.Save(&metrics.Metric{
 			ID:    params.MetricName,
 			MType: params.MetricType,
-			Value: (*metrics.Gauge)(&value),
+			Value: metrics.Gauge(value),
 		})
 	case metrics.CounterType:
 		value, err := strconv.ParseInt(params.MetricValue, 10, 64)
@@ -172,7 +172,7 @@ func (h *Handlers) MetricHandle(w http.ResponseWriter, r *http.Request) {
 		repo.Save(&metrics.Metric{
 			ID:    params.MetricName,
 			MType: params.MetricType,
-			Delta: (*metrics.Counter)(&value),
+			Delta: metrics.Counter(value),
 		})
 	default:
 		http.Error(w, "Wrong metric type", http.StatusNotImplemented)
@@ -197,14 +197,14 @@ func (h *Handlers) MetricHandleFromBody(w http.ResponseWriter, r *http.Request) 
 
 	switch params.MType {
 	case metrics.GaugeType:
-		if params.Value == nil {
+		if params.Value == 0 {
 			var v metrics.Gauge
-			params.Value = &v
+			params.Value = v
 		}
 	case metrics.CounterType:
-		if params.Delta == nil {
+		if params.Delta == 0 {
 			var v metrics.Counter
-			params.Delta = &v
+			params.Delta = v
 		}
 	default:
 		http.Error(w, "Wrong metric type", http.StatusNotImplemented)

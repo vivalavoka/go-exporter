@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/vivalavoka/go-exporter/cmd/agent/metrics"
+	"github.com/vivalavoka/go-exporter/internal/metrics"
 )
 
 type Client struct {

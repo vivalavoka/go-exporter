@@ -8,8 +8,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/vivalavoka/go-exporter/cmd/agent/client"
 	"github.com/vivalavoka/go-exporter/cmd/agent/config"
-	"github.com/vivalavoka/go-exporter/cmd/agent/crypto"
-	"github.com/vivalavoka/go-exporter/cmd/agent/metrics"
+	"github.com/vivalavoka/go-exporter/internal/crypto"
+	"github.com/vivalavoka/go-exporter/internal/metrics"
 )
 
 type Agent struct {
