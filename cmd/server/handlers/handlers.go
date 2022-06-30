@@ -11,7 +11,6 @@ import (
 	"text/template"
 
 	"github.com/go-chi/chi/v5"
-	log "github.com/sirupsen/logrus"
 	"github.com/vivalavoka/go-exporter/cmd/server/config"
 	"github.com/vivalavoka/go-exporter/cmd/server/crypto"
 	"github.com/vivalavoka/go-exporter/cmd/server/metrics"
@@ -214,8 +213,6 @@ func (h *Handlers) MetricHandleFromBody(w http.ResponseWriter, r *http.Request) 
 
 	if h.hasher.Enable {
 		hash := h.hasher.GetSum(params.String())
-		log.Info(params.String())
-		log.Info(hash)
 		if hash != params.Hash {
 			http.Error(w, "Wrong hash", http.StatusBadRequest)
 			return
