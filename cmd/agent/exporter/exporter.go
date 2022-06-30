@@ -1,7 +1,6 @@
 package exporter
 
 import (
-	"encoding/json"
 	"math/rand"
 	"runtime"
 	"time"
@@ -57,17 +56,11 @@ func (a *Agent) ReportMetrics() {
 		if a.hasher.Enable {
 			item.Hash = a.hasher.GetSum(item.String())
 		}
-		body, err := json.Marshal(&item)
+
+		_, err := a.client.SendMetric(a.config.Address, &item)
 
 		if err != nil {
 			log.Error(err)
-			continue
-		}
-
-		_, reqErr := a.client.MakeRequest(a.config.Address, body)
-
-		if reqErr != nil {
-			log.Error(reqErr)
 		}
 	}
 }

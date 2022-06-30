@@ -5,7 +5,6 @@ import (
 	"os"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/vivalavoka/go-exporter/cmd/server/config"
 	"github.com/vivalavoka/go-exporter/cmd/server/metrics"
 )
@@ -19,14 +18,14 @@ type FileDB struct {
 
 var fileDB *FileDB
 
-func NewDB(config config.Config) *FileDB {
+func NewDB(config config.Config) (*FileDB, error) {
 	if config.StoreFile == "" {
-		return &FileDB{}
+		return &FileDB{}, nil
 	}
 
 	file, err := os.OpenFile(config.StoreFile, os.O_RDWR|os.O_CREATE, 0777)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	fileDB = &FileDB{
@@ -35,7 +34,7 @@ func NewDB(config config.Config) *FileDB {
 		encoder: json.NewEncoder(file),
 		decoder: json.NewDecoder(file),
 	}
-	return fileDB
+	return fileDB, nil
 }
 
 func GetDB() *FileDB {

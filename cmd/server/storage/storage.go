@@ -16,16 +16,20 @@ type Storage struct {
 
 var storage *Storage
 
-func NewStorage(config config.Config) *Storage {
+func New(config config.Config) (*Storage, error) {
 	metrics := map[string]metrics.Metric{}
-	fileDB := NewDB(config)
+	fileDB, err := NewDB(config)
+
+	if err != nil {
+		return nil, err
+	}
 
 	if config.Restore {
-		_metrics, err := fileDB.Read()
+		metricList, err := fileDB.Read()
 		if err != nil {
 			log.Error(err)
 		} else {
-			metrics = _metrics
+			metrics = metricList
 		}
 	}
 
@@ -39,7 +43,7 @@ func NewStorage(config config.Config) *Storage {
 		go fileDB.RunTicker()
 	}
 
-	return storage
+	return storage, nil
 }
 
 func GetStorage() *Storage {

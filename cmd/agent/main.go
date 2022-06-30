@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"math/rand"
 	"time"
 
@@ -13,7 +14,11 @@ import (
 func main() {
 	rand.Seed(time.Now().Unix())
 
-	cfg := config.Get()
+	cfg, err := config.Get()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	client := client.New(resty.New())
 
 	exporter := exporter.New(cfg, client)

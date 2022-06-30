@@ -1,7 +1,10 @@
 package client
 
 import (
+	"encoding/json"
+
 	"github.com/go-resty/resty/v2"
+	"github.com/vivalavoka/go-exporter/cmd/agent/metrics"
 )
 
 type Client struct {
@@ -12,7 +15,13 @@ func New(client *resty.Client) *Client {
 	return &Client{restClient: client}
 }
 
-func (c *Client) MakeRequest(address string, body []byte) (*resty.Response, error) {
+func (c *Client) SendMetric(address string, metric *metrics.Metric) (*resty.Response, error) {
+	body, err := json.Marshal(&metric)
+
+	if err != nil {
+		return nil, err
+	}
+
 	return c.restClient.R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(body).

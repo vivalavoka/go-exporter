@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -11,8 +12,16 @@ import (
 )
 
 func main() {
-	config := config.Get()
-	storage := storage.NewStorage(config)
+	config, err := config.Get()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	storage, err := storage.New(config)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	defer storage.Close()
 
 	c := make(chan os.Signal, 1)

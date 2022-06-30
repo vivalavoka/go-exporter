@@ -16,7 +16,7 @@ type Config struct {
 	SHAKey        string        `env:"KEY"`
 }
 
-func Get() Config {
+func Get() (Config, error) {
 	var config Config
 	flag.StringVar(&config.Address, "a", "127.0.0.1:8080", "server address")
 	flag.DurationVar(&config.StoreInterval, "i", time.Duration(300*time.Millisecond), "store interval")
@@ -27,9 +27,9 @@ func Get() Config {
 
 	err := env.Parse(&config)
 	if err != nil {
-		log.Fatal(err)
+		return config, err
 	}
 
 	log.Info(config)
-	return config
+	return config, nil
 }
