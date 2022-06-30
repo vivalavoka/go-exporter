@@ -26,7 +26,7 @@ type Metrics struct {
 func (m Metrics) ForSHA() string {
 	switch m.MType {
 	case GaugeType:
-		return fmt.Sprintf("%s:%s:%.3f", m.ID, m.MType, m.Value)
+		return fmt.Sprintf("%s:%s:%f", m.ID, m.MType, m.Value)
 	case CounterType:
 		return fmt.Sprintf("%s:%s:%d", m.ID, m.MType, m.Delta)
 	}
@@ -36,6 +36,8 @@ func (m Metrics) ForSHA() string {
 func ReportMetrics(client *Client, metrics []Metrics) {
 	for _, item := range metrics {
 		item.Hash = GetSHA256(item.ForSHA())
+		log.Info(item.ForSHA())
+		log.Info(item.Hash)
 		body, err := json.Marshal(&item)
 
 		if err != nil {

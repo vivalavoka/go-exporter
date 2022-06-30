@@ -1,10 +1,11 @@
 package crypto
 
 import (
+	"crypto/hmac"
 	"crypto/sha256"
 	"fmt"
+	"io"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/vivalavoka/go-exporter/cmd/server/config"
 )
 
@@ -23,13 +24,7 @@ func New(cfg config.Config) *SHA256 {
 }
 
 func (s *SHA256) GetSum(str string) string {
-	log.Info(str)
-	log.Info(s.key)
-	h := sha256.New()
-	h.Write([]byte(str))
-	h.Write([]byte(s.key))
-	hash := fmt.Sprintf("%x", h.Sum(nil))
-	log.Info(hash)
-	log.Info()
-	return hash
+	hash := hmac.New(sha256.New, []byte(s.key))
+	io.WriteString(hash, str)
+	return fmt.Sprintf("%x", hash.Sum(nil))
 }
