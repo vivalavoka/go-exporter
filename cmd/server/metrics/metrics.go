@@ -19,7 +19,7 @@ type Metric struct {
 func (m Metric) String() string {
 	switch m.MType {
 	case GaugeType:
-		return fmt.Sprintf("%s:%s:%.3f", m.ID, m.MType, *m.Value)
+		return fmt.Sprintf("%s:%s:%f", m.ID, m.MType, *m.Value)
 	case CounterType:
 		return fmt.Sprintf("%s:%s:%d", m.ID, m.MType, *m.Delta)
 	}
