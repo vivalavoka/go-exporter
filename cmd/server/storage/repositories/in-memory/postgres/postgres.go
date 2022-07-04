@@ -30,7 +30,7 @@ func (r *PostgresDB) Close() {
 
 func (r *PostgresDB) CheckConnection() bool {
 	err := r.connection.Ping(context.Background())
-	return err != nil
+	return err == nil
 }
 
 func (r *PostgresDB) GetMetrics() (map[string]metrics.Metric, error) {
@@ -65,24 +65,15 @@ func (r *PostgresDB) GetMetrics() (map[string]metrics.Metric, error) {
 }
 
 func (r *PostgresDB) GetMetric(ID string) (metrics.Metric, error) {
-	var mID string
-	var mType string
-	var delta metrics.Counter
-	var value metrics.Gauge
+	var metric metrics.Metric
 
 	err := r.connection.QueryRow(context.Background(), `
 		SELECT id, m_type, delta, value FROM metrics WHERE id = $1;`,
 		ID,
-	).Scan(&mID, &mType, &value, &delta)
+	).Scan(&metric.ID, &metric.MType, &metric.Value, &metric.Delta)
+
 	if err != nil {
 		return metrics.Metric{}, err
-	}
-
-	metric := metrics.Metric{
-		ID:    mID,
-		MType: mType,
-		Delta: delta,
-		Value: value,
 	}
 
 	return metric, nil

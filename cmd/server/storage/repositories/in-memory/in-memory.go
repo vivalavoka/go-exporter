@@ -114,8 +114,6 @@ func (r *InMemoryDB) readFile() (map[string]metrics.Metric, error) {
 		return nil, err
 	}
 
-	println(metricList)
-
 	for _, value := range metricList {
 		metricMap[value.ID] = value
 	}
