@@ -29,7 +29,7 @@ func main() {
 	signal.Notify(c, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		<-c
-		stg.DropCache()
+		stg.Close()
 		os.Exit(1)
 	}()
 

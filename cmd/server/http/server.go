@@ -12,7 +12,8 @@ import (
 )
 
 type Server struct {
-	storage *storage.Storage
+	storage  *storage.Storage
+	handlers *handlers.Handlers
 }
 
 func New(storage *storage.Storage) *Server {
@@ -30,8 +31,8 @@ func (s *Server) Start(cfg config.Config) {
 	r.Use(middlewares.CompressHandle)
 	r.Use(middlewares.DecompressHandle)
 
-	h := handlers.New(cfg)
-	h.SetRoutes(r)
+	s.handlers = handlers.New(cfg, s.storage)
+	s.handlers.SetRoutes(r)
 
 	http.ListenAndServe(cfg.Address, r)
 }
