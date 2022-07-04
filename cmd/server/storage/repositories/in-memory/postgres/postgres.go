@@ -18,7 +18,7 @@ type PostgresDB struct {
 func New(cfg config.Config) (*PostgresDB, error) {
 	conn, err := pgx.Connect(context.Background(), cfg.DatabaseDSN)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to connect to database: %v\n", err)
+		return nil, fmt.Errorf("unable to connect to database: %v", err)
 	}
 
 	return &PostgresDB{config: cfg, connection: conn}, nil
@@ -38,7 +38,7 @@ func (r *PostgresDB) GetMetrics() (map[string]metrics.Metric, error) {
 
 	rows, err := r.connection.Query(context.Background(), "SELECT id, m_type, value, delta FROM metrics;")
 	if err != nil {
-		return metricMap, fmt.Errorf("QueryRow failed: %v\n", err)
+		return metricMap, fmt.Errorf("query row failed: %v", err)
 	}
 
 	for rows.Next() {
@@ -71,7 +71,9 @@ func (r *PostgresDB) GetMetric(ID string) (metrics.Metric, error) {
 	var value metrics.Gauge
 
 	err := r.connection.QueryRow(context.Background(), `
-		SELECT id, m_type, delta, value FROM metrics WHERE id = $1;`, ID).Scan(&mID, &mType, &value, &delta)
+		SELECT id, m_type, delta, value FROM metrics WHERE id = $1;`,
+		ID,
+	).Scan(&mID, &mType, &value, &delta)
 	if err != nil {
 		return metrics.Metric{}, err
 	}
