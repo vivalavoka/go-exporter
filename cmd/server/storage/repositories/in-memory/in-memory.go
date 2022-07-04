@@ -22,11 +22,9 @@ type InMemoryDB struct {
 }
 
 func New(config config.Config) (*InMemoryDB, error) {
-	metrics := map[string]metrics.Metric{}
-
 	repo := &InMemoryDB{
 		config:    config,
-		metrics:   metrics,
+		metrics:   map[string]metrics.Metric{},
 		fileUse:   config.StoreFile != "",
 		asyncFile: config.StoreInterval != 0,
 	}
@@ -45,7 +43,7 @@ func New(config config.Config) (*InMemoryDB, error) {
 			if err != nil {
 				log.Warn(err)
 			} else {
-				metrics = metricList
+				repo.metrics = metricList
 			}
 		}
 	}
@@ -55,6 +53,10 @@ func New(config config.Config) (*InMemoryDB, error) {
 	}
 
 	return repo, nil
+}
+
+func (r *InMemoryDB) CheckConnection() bool {
+	return true
 }
 
 func (r *InMemoryDB) runTicker() {
