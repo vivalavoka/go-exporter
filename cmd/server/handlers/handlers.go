@@ -44,7 +44,7 @@ func New(cfg config.Config) *Handlers {
 }
 
 func (h *Handlers) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
-	repo := storage.GetStorage()
+	stg := storage.GetStorage()
 	ex, err := os.Executable()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -57,7 +57,7 @@ func (h *Handlers) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 		PageTitle: "Exporter metrics",
 	}
 
-	metricList := repo.GetMetrics()
+	metricList, _ := stg.Repo.GetMetrics()
 	for name, value := range metricList {
 		if value.MType == metrics.GaugeType {
 			data.Metrics = append(data.Metrics, MetricData{name, fmt.Sprintf("%.3f", *value.Value)})
@@ -71,7 +71,7 @@ func (h *Handlers) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) GetMetric(w http.ResponseWriter, r *http.Request) {
-	repo := storage.GetStorage()
+	stg := storage.GetStorage()
 	params := UpdateParams{
 		MetricType: chi.URLParam(r, "type"),
 		MetricName: chi.URLParam(r, "name"),
@@ -81,7 +81,7 @@ func (h *Handlers) GetMetric(w http.ResponseWriter, r *http.Request) {
 
 	switch params.MetricType {
 	case metrics.GaugeType:
-		value, err := repo.GetMetric(params.MetricName)
+		value, err := stg.Repo.GetMetric(params.MetricName)
 		if err != nil {
 			w.WriteHeader(http.StatusNotFound)
 			w.Write([]byte(err.Error()))
@@ -91,7 +91,7 @@ func (h *Handlers) GetMetric(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(fmt.Sprintf("%.3f", *value.Value)))
 	case metrics.CounterType:
-		value, err := repo.GetMetric(params.MetricName)
+		value, err := stg.Repo.GetMetric(params.MetricName)
 		if err != nil {
 			w.WriteHeader(http.StatusNotFound)
 			w.Write([]byte(err.Error()))
@@ -107,7 +107,7 @@ func (h *Handlers) GetMetric(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) GetMetricFromBody(w http.ResponseWriter, r *http.Request) {
-	repo := storage.GetStorage()
+	stg := storage.GetStorage()
 	var params metrics.Metric
 
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
@@ -122,7 +122,7 @@ func (h *Handlers) GetMetricFromBody(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
-	metric, err := repo.GetMetric(params.ID)
+	metric, err := stg.Repo.GetMetric(params.ID)
 	if h.hasher.Enable {
 		metric.Hash = h.hasher.GetSum(metric.String())
 	}
@@ -145,7 +145,7 @@ func (h *Handlers) GetMetricFromBody(w http.ResponseWriter, r *http.Request) {
 
 // MetricHandle — обработчик запроса.
 func (h *Handlers) MetricHandle(w http.ResponseWriter, r *http.Request) {
-	repo := storage.GetStorage()
+	stg := storage.GetStorage()
 	params := UpdateParams{
 		MetricType:  chi.URLParam(r, "type"),
 		MetricName:  chi.URLParam(r, "name"),
@@ -159,7 +159,7 @@ func (h *Handlers) MetricHandle(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Wrong metric value", http.StatusBadRequest)
 			return
 		}
-		repo.Save(&metrics.Metric{
+		stg.Repo.Save(&metrics.Metric{
 			ID:    params.MetricName,
 			MType: params.MetricType,
 			Value: (*metrics.Gauge)(&value),
@@ -170,7 +170,7 @@ func (h *Handlers) MetricHandle(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Wrong metric value", http.StatusBadRequest)
 			return
 		}
-		repo.Save(&metrics.Metric{
+		stg.Repo.Save(&metrics.Metric{
 			ID:    params.MetricName,
 			MType: params.MetricType,
 			Delta: (*metrics.Counter)(&value),
@@ -186,7 +186,7 @@ func (h *Handlers) MetricHandle(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) MetricHandleFromBody(w http.ResponseWriter, r *http.Request) {
-	repo := storage.GetStorage()
+	stg := storage.GetStorage()
 
 	var params *metrics.Metric
 
@@ -222,7 +222,7 @@ func (h *Handlers) MetricHandleFromBody(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	repo.Save(params)
+	stg.Repo.Save(params)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
