@@ -1,53 +1,84 @@
 package storage
 
 import (
+	"fmt"
+
+	log "github.com/sirupsen/logrus"
 	"github.com/vivalavoka/go-exporter/cmd/server/config"
 	"github.com/vivalavoka/go-exporter/cmd/server/metrics"
-	memorydb "github.com/vivalavoka/go-exporter/cmd/server/storage/repositories/in-memory"
-	postgresdb "github.com/vivalavoka/go-exporter/cmd/server/storage/repositories/in-memory/postgres"
 )
 
-type MetricsRepoInterface interface {
-	Close()
-	CheckConnection() bool
-	GetMetrics() (map[string]metrics.Metric, error)
-	GetMetric(ID string) (metrics.Metric, error)
-	Save(metric *metrics.Metric) error
-}
-
 type Storage struct {
-	config config.Config
-	Repo   MetricsRepoInterface
+	config  config.Config
+	fileDB  *FileDB
+	metrics map[string]metrics.Metric
 }
 
-var stg *Storage
+var storage *Storage
 
-func New(config config.Config) (*Storage, error) {
-	var repo MetricsRepoInterface
-	var err error
+func NewStorage(config config.Config) *Storage {
+	metrics := map[string]metrics.Metric{}
+	fileDB := NewDB(config)
 
-	if config.DatabaseDSN == "" {
-		repo, err = memorydb.New(config)
-	} else {
-		repo, err = postgresdb.New(config)
+	if config.Restore {
+		_metrics, err := fileDB.Read()
+		if err != nil {
+			log.Error(err)
+		} else {
+			metrics = _metrics
+		}
 	}
 
-	if err != nil {
-		return nil, err
+	storage = &Storage{
+		config:  config,
+		fileDB:  fileDB,
+		metrics: metrics,
 	}
 
-	stg = &Storage{
-		config: config,
-		Repo:   repo,
+	if config.StoreInterval != 0 {
+		go fileDB.RunTicker()
 	}
 
-	return stg, nil
+	return storage
 }
 
 func GetStorage() *Storage {
-	return stg
+	return storage
+}
+
+func (s *Storage) DropCache() {
+	if err := s.fileDB.Write(s.metrics); err != nil {
+		log.Error(err)
+	}
 }
 
 func (s *Storage) Close() {
-	s.Repo.Close()
+	s.fileDB.Close()
+}
+
+func (s *Storage) GetMetrics() map[string]metrics.Metric {
+	return s.metrics
+}
+
+func (s *Storage) GetMetric(name string) (metrics.Metric, error) {
+	if value, ok := s.metrics[name]; ok {
+		return value, nil
+	}
+	return metrics.Metric{}, fmt.Errorf("there is no metric by name: %s", name)
+}
+
+func (s *Storage) Save(metric *metrics.Metric) error {
+	value, ok := s.metrics[metric.ID]
+	if metric.MType == metrics.CounterType && ok {
+		*metric.Delta += *value.Delta
+	}
+	s.metrics[metric.ID] = *metric
+
+	if s.config.StoreInterval == 0 {
+		if err := s.fileDB.Write(s.metrics); err != nil {
+			log.Error(err)
+		}
+	}
+
+	return nil
 }

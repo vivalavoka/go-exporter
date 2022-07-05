@@ -12,14 +12,14 @@ import (
 
 func main() {
 	config := config.Get()
-	storage, _ := storage.New(config)
+	storage := storage.NewStorage(config)
 	defer storage.Close()
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		<-c
-		storage.Repo.Close()
+		storage.DropCache()
 		os.Exit(1)
 	}()
 

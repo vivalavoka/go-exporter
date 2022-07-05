@@ -14,7 +14,6 @@ type Config struct {
 	StoreFile     string        `env:"STORE_FILE"`
 	Restore       bool          `env:"RESTORE"`
 	SHAKey        string        `env:"KEY"`
-	DatabaseDSN   string        `env:"DATABASE_DSN"`
 }
 
 func Get() Config {
@@ -24,7 +23,6 @@ func Get() Config {
 	flag.StringVar(&config.StoreFile, "f", "/tmp/devops-metrics-db.json", "store file name")
 	flag.BoolVar(&config.Restore, "r", true, "need restore")
 	flag.StringVar(&config.SHAKey, "k", "", "sha key")
-	flag.StringVar(&config.DatabaseDSN, "d", "", "database dsn")
 	flag.Parse()
 
 	err := env.Parse(&config)
