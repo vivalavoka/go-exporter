@@ -172,7 +172,7 @@ func (h *Handlers) MetricHandle(w http.ResponseWriter, r *http.Request) {
 	case metrics.GaugeType:
 		value, err := strconv.ParseFloat(params.MetricValue, 64)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, "Wrong metric value", http.StatusBadRequest)
 			return
 		}
 		h.storage.Repo.Save(&metrics.Metric{
@@ -183,7 +183,7 @@ func (h *Handlers) MetricHandle(w http.ResponseWriter, r *http.Request) {
 	case metrics.CounterType:
 		value, err := strconv.ParseInt(params.MetricValue, 10, 64)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, "Wrong metric value", http.StatusBadRequest)
 			return
 		}
 		h.storage.Repo.Save(&metrics.Metric{
