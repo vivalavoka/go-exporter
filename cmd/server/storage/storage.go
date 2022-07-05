@@ -17,26 +17,28 @@ type Storage struct {
 var storage *Storage
 
 func NewStorage(config config.Config) *Storage {
-	metrics := map[string]metrics.Metric{}
-	fileDB := NewDB(config)
-
-	if config.Restore {
-		_metrics, err := fileDB.Read()
-		if err != nil {
-			log.Error(err)
-		} else {
-			metrics = _metrics
-		}
-	}
-
 	storage = &Storage{
 		config:  config,
-		fileDB:  fileDB,
-		metrics: metrics,
+		metrics: map[string]metrics.Metric{},
 	}
 
-	if config.StoreInterval != 0 {
-		go fileDB.RunTicker()
+	if config.DatabaseDSN == "" {
+		storage.fileDB = NewDB(config)
+
+		if config.Restore {
+			_metrics, err := storage.fileDB.Read()
+			if err != nil {
+				log.Error(err)
+			} else {
+				storage.metrics = _metrics
+			}
+		}
+
+		if config.StoreInterval != 0 {
+			go storage.fileDB.RunTicker()
+		}
+	} else {
+
 	}
 
 	return storage
@@ -47,13 +49,17 @@ func GetStorage() *Storage {
 }
 
 func (s *Storage) DropCache() {
-	if err := s.fileDB.Write(s.metrics); err != nil {
-		log.Error(err)
+	if s.config.DatabaseDSN == "" {
+		if err := s.fileDB.Write(s.metrics); err != nil {
+			log.Error(err)
+		}
 	}
 }
 
 func (s *Storage) Close() {
-	s.fileDB.Close()
+	if s.config.DatabaseDSN == "" {
+		s.fileDB.Close()
+	}
 }
 
 func (s *Storage) GetMetrics() map[string]metrics.Metric {
@@ -74,7 +80,7 @@ func (s *Storage) Save(metric *metrics.Metric) error {
 	}
 	s.metrics[metric.ID] = *metric
 
-	if s.config.StoreInterval == 0 {
+	if s.config.StoreInterval == 0 && s.config.DatabaseDSN == "" {
 		if err := s.fileDB.Write(s.metrics); err != nil {
 			log.Error(err)
 		}
