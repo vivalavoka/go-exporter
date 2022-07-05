@@ -87,7 +87,7 @@ func (r *InMemoryDB) GetMetric(name string) (metrics.Metric, error) {
 func (r *InMemoryDB) Save(metric *metrics.Metric) error {
 	value, ok := r.metrics[metric.ID]
 	if metric.MType == metrics.CounterType && ok {
-		metric.Delta += value.Delta
+		*metric.Delta += *value.Delta
 	}
 	r.metrics[metric.ID] = *metric
 

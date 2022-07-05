@@ -54,8 +54,8 @@ func (r *PostgresDB) GetMetrics() (map[string]metrics.Metric, error) {
 		metric := metrics.Metric{
 			ID:    mID,
 			MType: mType,
-			Delta: delta,
-			Value: value,
+			Delta: &delta,
+			Value: &value,
 		}
 
 		metricMap[metric.ID] = metric

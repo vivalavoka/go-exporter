@@ -67,9 +67,9 @@ func (h *Handlers) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 
 	for name, value := range metricList {
 		if value.MType == metrics.GaugeType {
-			data.Metrics = append(data.Metrics, MetricData{name, fmt.Sprintf("%.3f", value.Value)})
+			data.Metrics = append(data.Metrics, MetricData{name, fmt.Sprintf("%.3f", *value.Value)})
 		} else {
-			data.Metrics = append(data.Metrics, MetricData{name, fmt.Sprintf("%d", value.Delta)})
+			data.Metrics = append(data.Metrics, MetricData{name, fmt.Sprintf("%d", *value.Delta)})
 		}
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -107,7 +107,7 @@ func (h *Handlers) GetMetric(w http.ResponseWriter, r *http.Request) {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(fmt.Sprintf("%.3f", value.Value)))
+		w.Write([]byte(fmt.Sprintf("%.3f", *value.Value)))
 	case metrics.CounterType:
 		value, err := h.storage.Repo.GetMetric(params.MetricName)
 		if err != nil {
@@ -117,7 +117,7 @@ func (h *Handlers) GetMetric(w http.ResponseWriter, r *http.Request) {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(fmt.Sprintf("%d", value.Delta)))
+		w.Write([]byte(fmt.Sprintf("%d", *value.Delta)))
 	default:
 		http.Error(w, "Wrong metric type", http.StatusNotImplemented)
 		return
@@ -178,7 +178,7 @@ func (h *Handlers) MetricHandle(w http.ResponseWriter, r *http.Request) {
 		h.storage.Repo.Save(&metrics.Metric{
 			ID:    params.MetricName,
 			MType: params.MetricType,
-			Value: metrics.Gauge(value),
+			Value: (*metrics.Gauge)(&value),
 		})
 	case metrics.CounterType:
 		value, err := strconv.ParseInt(params.MetricValue, 10, 64)
@@ -189,7 +189,7 @@ func (h *Handlers) MetricHandle(w http.ResponseWriter, r *http.Request) {
 		h.storage.Repo.Save(&metrics.Metric{
 			ID:    params.MetricName,
 			MType: params.MetricType,
-			Delta: metrics.Counter(value),
+			Delta: (*metrics.Counter)(&value),
 		})
 	default:
 		http.Error(w, "Wrong metric type", http.StatusNotImplemented)
@@ -213,14 +213,14 @@ func (h *Handlers) MetricHandleFromBody(w http.ResponseWriter, r *http.Request) 
 
 	switch params.MType {
 	case metrics.GaugeType:
-		if params.Value == 0 {
+		if params.Value == nil {
 			var v metrics.Gauge
-			params.Value = v
+			params.Value = &v
 		}
 	case metrics.CounterType:
-		if params.Delta == 0 {
+		if params.Delta == nil {
 			var v metrics.Counter
-			params.Delta = v
+			params.Delta = &v
 		}
 	default:
 		http.Error(w, "Wrong metric type", http.StatusNotImplemented)
