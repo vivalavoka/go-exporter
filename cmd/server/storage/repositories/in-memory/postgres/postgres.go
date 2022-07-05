@@ -21,7 +21,27 @@ func New(cfg config.Config) (*PostgresDB, error) {
 		return nil, fmt.Errorf("unable to connect to database: %v", err)
 	}
 
-	return &PostgresDB{config: cfg, connection: conn}, nil
+	postgres := PostgresDB{config: cfg, connection: conn}
+
+	err = postgres.migration()
+
+	if err != nil {
+		return nil, fmt.Errorf("migration failed: %v", err)
+	}
+
+	return &postgres, nil
+}
+
+func (r *PostgresDB) migration() error {
+	_, err := r.connection.Exec(context.Background(), `
+		CREATE TABLE IF NOT EXISTS metrics (
+			id VARCHAR PRIMARY KEY,
+			m_type VARCHAR,
+			value DOUBLE PRECISION DEFAULT 0,
+			delta INT DEFAULT 0
+		);`,
+	)
+	return err
 }
 
 func (r *PostgresDB) Close() {
