@@ -38,11 +38,15 @@ func New(cfg config.Config) (*PostgresDB, error) {
 		ON CONFLICT (id) DO UPDATE SET value = $3, delta = metrics.delta + $4;`,
 	)
 
+	if err != nil {
+		return nil, err
+	}
+
 	return &postgres, nil
 }
 
 func (r *PostgresDB) migration() error {
-	_, err := r.connection.Query(`
+	rows, err := r.connection.Query(`
 		CREATE TABLE IF NOT EXISTS metrics (
 			id VARCHAR PRIMARY KEY,
 			m_type VARCHAR,
@@ -50,6 +54,9 @@ func (r *PostgresDB) migration() error {
 			delta INT DEFAULT 0
 		);`,
 	)
+	if rows.Err() != nil {
+		return rows.Err()
+	}
 	return err
 }
 
