@@ -100,6 +100,24 @@ func (r *InMemoryDB) Save(metric *metrics.Metric) error {
 	return nil
 }
 
+func (r *InMemoryDB) SaveBatch(metricList []*metrics.Metric) error {
+	for _, metric := range metricList {
+		value, ok := r.metrics[metric.ID]
+		if metric.MType == metrics.CounterType && ok {
+			*metric.Delta += *value.Delta
+		}
+		r.metrics[metric.ID] = *metric
+	}
+
+	if !r.asyncFile {
+		if err := r.writeFile(r.metrics); err != nil {
+			log.Error(err)
+		}
+	}
+
+	return nil
+}
+
 func (r *InMemoryDB) dropCache() {
 	if err := r.writeFile(r.metrics); err != nil {
 		log.Error(err)

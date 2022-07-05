@@ -2,9 +2,11 @@ package postgresdb
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
-	pgx "github.com/jackc/pgx/v4"
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
 	"github.com/vivalavoka/go-exporter/cmd/server/config"
 	"github.com/vivalavoka/go-exporter/internal/metrics"
@@ -12,11 +14,12 @@ import (
 
 type PostgresDB struct {
 	config     config.Config
-	connection *pgx.Conn
+	connection *sqlx.DB
+	insertStmt *sql.Stmt
 }
 
 func New(cfg config.Config) (*PostgresDB, error) {
-	conn, err := pgx.Connect(context.Background(), cfg.DatabaseDSN)
+	conn, err := sqlx.Open("postgres", cfg.DatabaseDSN)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to database: %v", err)
 	}
@@ -29,11 +32,17 @@ func New(cfg config.Config) (*PostgresDB, error) {
 		return nil, fmt.Errorf("migration failed: %v", err)
 	}
 
+	postgres.insertStmt, err = postgres.connection.Prepare(`
+		INSERT INTO metrics (id, m_type, value, delta)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (id) DO UPDATE SET value = $3, delta = metrics.delta + $4;`,
+	)
+
 	return &postgres, nil
 }
 
 func (r *PostgresDB) migration() error {
-	_, err := r.connection.Exec(context.Background(), `
+	_, err := r.connection.Query(`
 		CREATE TABLE IF NOT EXISTS metrics (
 			id VARCHAR PRIMARY KEY,
 			m_type VARCHAR,
@@ -45,52 +54,37 @@ func (r *PostgresDB) migration() error {
 }
 
 func (r *PostgresDB) Close() {
-	r.connection.Close(context.Background())
+	r.connection.Close()
 }
 
 func (r *PostgresDB) CheckConnection() bool {
-	err := r.connection.Ping(context.Background())
+	err := r.connection.Ping()
 	return err == nil
 }
 
 func (r *PostgresDB) GetMetrics() (map[string]metrics.Metric, error) {
+	var metricList []metrics.Metric
 	var metricMap = map[string]metrics.Metric{}
 
-	rows, err := r.connection.Query(context.Background(), "SELECT id, m_type, value, delta FROM metrics;")
+	err := r.connection.Select(&metricList, "SELECT id, m_type, value, delta FROM metrics;")
 	if err != nil {
 		return metricMap, fmt.Errorf("query row failed: %v", err)
 	}
 
-	for rows.Next() {
-		var mID string
-		var mType string
-		delta := metrics.Counter(0)
-		value := metrics.Gauge(0)
-
-		err := rows.Scan(&mID, &mType, &value, &delta)
-		if err != nil {
-			log.Error(err)
-		}
-		metric := metrics.Metric{
-			ID:    mID,
-			MType: mType,
-			Delta: &delta,
-			Value: &value,
-		}
-
+	for _, metric := range metricList {
 		metricMap[metric.ID] = metric
 	}
 
-	return metricMap, rows.Err()
+	return metricMap, nil
 }
 
 func (r *PostgresDB) GetMetric(ID string) (metrics.Metric, error) {
 	var metric metrics.Metric
 
-	err := r.connection.QueryRow(context.Background(), `
+	err := r.connection.Get(&metric, `
 		SELECT id, m_type, delta, value FROM metrics WHERE id = $1;`,
 		ID,
-	).Scan(&metric.ID, &metric.MType, &metric.Value, &metric.Delta)
+	)
 
 	if err != nil {
 		return metrics.Metric{}, err
@@ -100,11 +94,28 @@ func (r *PostgresDB) GetMetric(ID string) (metrics.Metric, error) {
 }
 
 func (r *PostgresDB) Save(metric *metrics.Metric) error {
-	_, err := r.connection.Exec(context.Background(), `
-		INSERT INTO metrics(id, m_type, value, delta)
-		VALUES ($1, $2, $3, $4)
-		ON CONFLICT (id) DO UPDATE SET value = $3, delta = $4;`,
-		metric.ID, metric.MType, metric.Value, metric.Delta,
-	)
+	log.Info(metric)
+	_, err := r.insertStmt.Exec(metric.ID, metric.MType, metric.Value, metric.Delta)
 	return err
+}
+
+func (r *PostgresDB) SaveBatch(metricList []*metrics.Metric) error {
+	tx, err := r.connection.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	stmt := tx.StmtContext(context.Background(), r.insertStmt)
+	defer stmt.Close()
+
+	for _, metric := range metricList {
+		if _, err = stmt.Exec(metric.ID, metric.MType, metric.Value, metric.Delta); err != nil {
+			if err = tx.Rollback(); err != nil {
+				log.Fatalf("update drivers: unable to rollback: %v", err)
+			}
+			return err
+		}
+	}
+	return tx.Commit()
 }

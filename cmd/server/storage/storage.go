@@ -13,6 +13,7 @@ type MetricsRepoInterface interface {
 	GetMetrics() (map[string]metrics.Metric, error)
 	GetMetric(ID string) (metrics.Metric, error)
 	Save(metric *metrics.Metric) error
+	SaveBatch(metrics []*metrics.Metric) error
 }
 
 type Storage struct {

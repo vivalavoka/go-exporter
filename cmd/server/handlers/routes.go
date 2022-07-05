@@ -7,6 +7,7 @@ func (h *Handlers) SetRoutes(r chi.Router) chi.Router {
 	r.Get("/ping", h.CheckConnection)
 	r.Post("/update/{type}/{name}/{value}", h.MetricHandle)
 	r.Post("/update/", h.MetricHandleFromBody)
+	r.Post("/updates/", h.MetricBatchHandle)
 	r.Get("/value/{type}/{name}", h.GetMetric)
 	r.Post("/value/", h.GetMetricFromBody)
 

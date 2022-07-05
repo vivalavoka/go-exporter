@@ -9,10 +9,10 @@ const GaugeType = "gauge"
 const CounterType = "counter"
 
 type Metric struct {
-	ID    string   `json:"id"`              // имя метрики
-	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
-	Delta *Counter `json:"delta,omitempty"` // значение метрики в случае передачи counter
-	Value *Gauge   `json:"value,omitempty"` // значение метрики в случае передачи gauge
+	ID    string   `json:"id" db:"id"`                 // имя метрики
+	MType string   `json:"type" db:"m_type"`           // параметр, принимающий значение gauge или counter
+	Delta *Counter `json:"delta,omitempty" db:"delta"` // значение метрики в случае передачи counter
+	Value *Gauge   `json:"value,omitempty" db:"value"` // значение метрики в случае передачи gauge
 	Hash  string   `json:"hash,omitempty"`
 }
 
