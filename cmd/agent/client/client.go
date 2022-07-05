@@ -30,3 +30,19 @@ func (c *Client) SendMetric(address string, metric *metrics.Metric) (*resty.Resp
 		}).
 		Post("http://{address}/update/")
 }
+
+func (c *Client) SendMetrics(address string, metricList []*metrics.Metric) (*resty.Response, error) {
+	body, err := json.Marshal(&metricList)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return c.restClient.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(body).
+		SetPathParams(map[string]string{
+			"address": address,
+		}).
+		Post("http://{address}/updates/")
+}
