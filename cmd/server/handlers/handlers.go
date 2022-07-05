@@ -77,6 +77,18 @@ func (h *Handlers) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 	tmpl.Execute(w, data)
 }
 
+func (h *Handlers) CheckConnection(w http.ResponseWriter, r *http.Request) {
+	ok := h.storage.Repo.CheckConnection()
+	if !ok {
+		http.Error(w, "Connection refused", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("{}"))
+}
+
 func (h *Handlers) GetMetric(w http.ResponseWriter, r *http.Request) {
 	params := UpdateParams{
 		MetricType: chi.URLParam(r, "type"),
