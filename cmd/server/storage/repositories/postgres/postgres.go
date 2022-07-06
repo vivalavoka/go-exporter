@@ -51,7 +51,7 @@ func (r *PostgresDB) migration() error {
 			id VARCHAR PRIMARY KEY,
 			m_type VARCHAR,
 			value DOUBLE PRECISION DEFAULT 0,
-			delta INT DEFAULT 0
+			delta BIGINT DEFAULT 0
 		);`,
 	)
 	if rows.Err() != nil {
