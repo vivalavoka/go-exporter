@@ -99,7 +99,7 @@ func (h *Handlers) GetMetric(w http.ResponseWriter, r *http.Request) {
 
 	switch params.MetricType {
 	case metrics.GaugeType:
-		value, err := h.storage.Repo.GetMetric(params.MetricName)
+		value, err := h.storage.Repo.GetMetric(params.MetricName, params.MetricType)
 		if err != nil {
 			w.WriteHeader(http.StatusNotFound)
 			w.Write([]byte(err.Error()))
@@ -109,7 +109,7 @@ func (h *Handlers) GetMetric(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(fmt.Sprintf("%.3f", *value.Value)))
 	case metrics.CounterType:
-		value, err := h.storage.Repo.GetMetric(params.MetricName)
+		value, err := h.storage.Repo.GetMetric(params.MetricName, params.MetricType)
 		if err != nil {
 			w.WriteHeader(http.StatusNotFound)
 			w.Write([]byte(err.Error()))
@@ -139,14 +139,15 @@ func (h *Handlers) GetMetricFromBody(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
-	metric, err := h.storage.Repo.GetMetric(params.ID)
-	if h.hasher.Enable {
-		metric.Hash = h.hasher.GetSum(metric.String())
-	}
+	metric, err := h.storage.Repo.GetMetric(params.ID, params.MType)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(err.Error()))
 		return
+	}
+
+	if h.hasher.Enable {
+		metric.Hash = h.hasher.GetSum(metric.String())
 	}
 
 	response, err := json.Marshal(metric)

@@ -85,16 +85,13 @@ func (r *PostgresDB) GetMetrics() (map[string]metrics.Metric, error) {
 	return metricMap, nil
 }
 
-func (r *PostgresDB) GetMetric(ID string) (metrics.Metric, error) {
+func (r *PostgresDB) GetMetric(ID string, MType string) (metrics.Metric, error) {
 	var metric metrics.Metric
 
-	err := r.connection.Get(&metric, `
-		SELECT id, m_type, delta, value FROM metrics WHERE id = $1;`,
-		ID,
-	)
+	err := r.connection.Get(&metric, `SELECT id, m_type, delta, value FROM metrics WHERE id = $1 AND m_type = $2;`, ID, MType)
 
 	if err != nil {
-		return metrics.Metric{}, err
+		return metrics.Metric{}, fmt.Errorf("there is no metric by name: %s", ID)
 	}
 
 	return metric, nil

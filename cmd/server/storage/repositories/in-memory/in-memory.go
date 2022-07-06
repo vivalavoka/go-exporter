@@ -77,11 +77,14 @@ func (r *InMemoryDB) GetMetrics() (map[string]metrics.Metric, error) {
 	return r.metrics, nil
 }
 
-func (r *InMemoryDB) GetMetric(name string) (metrics.Metric, error) {
-	if value, ok := r.metrics[name]; ok {
+func (r *InMemoryDB) GetMetric(ID string, MType string) (metrics.Metric, error) {
+	if value, ok := r.metrics[ID]; ok {
+		if value.MType != MType {
+			return metrics.Metric{}, fmt.Errorf("there is no metric by name: %s", ID)
+		}
 		return value, nil
 	}
-	return metrics.Metric{}, fmt.Errorf("there is no metric by name: %s", name)
+	return metrics.Metric{}, fmt.Errorf("there is no metric by name: %s", ID)
 }
 
 func (r *InMemoryDB) Save(metric *metrics.Metric) error {
