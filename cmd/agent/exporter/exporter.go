@@ -16,7 +16,7 @@ type Agent struct {
 	config       config.Config
 	client       *client.Client
 	pollCount    metrics.Counter
-	metrics      []metrics.Metric
+	metrics      []*metrics.Metric
 	pollTicker   *time.Ticker
 	reportTicker *time.Ticker
 	hasher       *crypto.SHA256
@@ -56,16 +56,20 @@ func (a *Agent) ReportMetrics() {
 		if a.hasher.Enable {
 			item.Hash = a.hasher.GetSum(item.String())
 		}
+	}
 
-		_, err := a.client.SendMetric(a.config.Address, &item)
+	if len(a.metrics) == 0 {
+		return
+	}
 
-		if err != nil {
-			log.Error(err)
-		}
+	_, err := a.client.SendMetrics(a.config.Address, a.metrics)
+
+	if err != nil {
+		log.Error(err)
 	}
 }
 
-func (a *Agent) GetMetrics() []metrics.Metric {
+func (a *Agent) GetMetrics() []*metrics.Metric {
 	var stats runtime.MemStats
 	runtime.ReadMemStats(&stats)
 	random := rand.Float64()
@@ -99,7 +103,7 @@ func (a *Agent) GetMetrics() []metrics.Metric {
 	totalAlloc := metrics.Gauge(stats.TotalAlloc)
 	randomValue := metrics.Gauge(random)
 
-	metrics := []metrics.Metric{
+	metrics := []*metrics.Metric{
 		{ID: "PollCount", MType: metrics.CounterType, Delta: &a.pollCount},
 		{ID: "Alloc", MType: metrics.GaugeType, Value: &alloc},
 		{ID: "BuckHashSys", MType: metrics.GaugeType, Value: &buckHashSys},

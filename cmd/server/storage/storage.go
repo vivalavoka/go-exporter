@@ -3,7 +3,7 @@ package storage
 import (
 	"github.com/vivalavoka/go-exporter/cmd/server/config"
 	memorydb "github.com/vivalavoka/go-exporter/cmd/server/storage/repositories/in-memory"
-	postgresdb "github.com/vivalavoka/go-exporter/cmd/server/storage/repositories/in-memory/postgres"
+	postgresdb "github.com/vivalavoka/go-exporter/cmd/server/storage/repositories/postgres"
 	"github.com/vivalavoka/go-exporter/internal/metrics"
 )
 
@@ -11,8 +11,9 @@ type MetricsRepoInterface interface {
 	Close()
 	CheckConnection() bool
 	GetMetrics() (map[string]metrics.Metric, error)
-	GetMetric(ID string) (metrics.Metric, error)
+	GetMetric(ID string, MType string) (metrics.Metric, error)
 	Save(metric *metrics.Metric) error
+	SaveBatch(metrics []*metrics.Metric) error
 }
 
 type Storage struct {

@@ -77,11 +77,14 @@ func (r *InMemoryDB) GetMetrics() (map[string]metrics.Metric, error) {
 	return r.metrics, nil
 }
 
-func (r *InMemoryDB) GetMetric(name string) (metrics.Metric, error) {
-	if value, ok := r.metrics[name]; ok {
+func (r *InMemoryDB) GetMetric(ID string, MType string) (metrics.Metric, error) {
+	if value, ok := r.metrics[ID]; ok {
+		if value.MType != MType {
+			return metrics.Metric{}, fmt.Errorf("there is no metric by name: %s", ID)
+		}
 		return value, nil
 	}
-	return metrics.Metric{}, fmt.Errorf("there is no metric by name: %s", name)
+	return metrics.Metric{}, fmt.Errorf("there is no metric by name: %s", ID)
 }
 
 func (r *InMemoryDB) Save(metric *metrics.Metric) error {
@@ -90,6 +93,24 @@ func (r *InMemoryDB) Save(metric *metrics.Metric) error {
 		*metric.Delta += *value.Delta
 	}
 	r.metrics[metric.ID] = *metric
+
+	if !r.asyncFile {
+		if err := r.writeFile(r.metrics); err != nil {
+			log.Error(err)
+		}
+	}
+
+	return nil
+}
+
+func (r *InMemoryDB) SaveBatch(metricList []*metrics.Metric) error {
+	for _, metric := range metricList {
+		value, ok := r.metrics[metric.ID]
+		if metric.MType == metrics.CounterType && ok {
+			*metric.Delta += *value.Delta
+		}
+		r.metrics[metric.ID] = *metric
+	}
 
 	if !r.asyncFile {
 		if err := r.writeFile(r.metrics); err != nil {

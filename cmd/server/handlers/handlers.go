@@ -61,7 +61,7 @@ func (h *Handlers) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 
 	metricList, err := h.storage.Repo.GetMetrics()
 	if err != nil {
-		http.Error(w, "Error on get metrics", http.StatusNotImplemented)
+		http.Error(w, err.Error(), http.StatusNotImplemented)
 		return
 	}
 
@@ -99,7 +99,7 @@ func (h *Handlers) GetMetric(w http.ResponseWriter, r *http.Request) {
 
 	switch params.MetricType {
 	case metrics.GaugeType:
-		value, err := h.storage.Repo.GetMetric(params.MetricName)
+		value, err := h.storage.Repo.GetMetric(params.MetricName, params.MetricType)
 		if err != nil {
 			w.WriteHeader(http.StatusNotFound)
 			w.Write([]byte(err.Error()))
@@ -109,7 +109,7 @@ func (h *Handlers) GetMetric(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(fmt.Sprintf("%.3f", *value.Value)))
 	case metrics.CounterType:
-		value, err := h.storage.Repo.GetMetric(params.MetricName)
+		value, err := h.storage.Repo.GetMetric(params.MetricName, params.MetricType)
 		if err != nil {
 			w.WriteHeader(http.StatusNotFound)
 			w.Write([]byte(err.Error()))
@@ -139,14 +139,15 @@ func (h *Handlers) GetMetricFromBody(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
-	metric, err := h.storage.Repo.GetMetric(params.ID)
-	if h.hasher.Enable {
-		metric.Hash = h.hasher.GetSum(metric.String())
-	}
+	metric, err := h.storage.Repo.GetMetric(params.ID, params.MType)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(err.Error()))
 		return
+	}
+
+	if h.hasher.Enable {
+		metric.Hash = h.hasher.GetSum(metric.String())
 	}
 
 	response, err := json.Marshal(metric)
@@ -202,7 +203,6 @@ func (h *Handlers) MetricHandle(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) MetricHandleFromBody(w http.ResponseWriter, r *http.Request) {
-
 	var params *metrics.Metric
 
 	err := json.NewDecoder(r.Body).Decode(&params)
@@ -235,7 +235,55 @@ func (h *Handlers) MetricHandleFromBody(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	h.storage.Repo.Save(params)
+	err = h.storage.Repo.Save(params)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("{}"))
+}
+
+func (h *Handlers) MetricBatchHandle(w http.ResponseWriter, r *http.Request) {
+
+	var params []*metrics.Metric
+
+	err := json.NewDecoder(r.Body).Decode(&params)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	for _, param := range params {
+		switch param.MType {
+		case metrics.GaugeType:
+			if param.Value == nil {
+				var v metrics.Gauge
+				param.Value = &v
+			}
+		case metrics.CounterType:
+			if param.Delta == nil {
+				var v metrics.Counter
+				param.Delta = &v
+			}
+		default:
+			http.Error(w, "Wrong metric type", http.StatusNotImplemented)
+			return
+		}
+
+		if h.hasher.Enable {
+			hash := h.hasher.GetSum(param.String())
+			if hash != param.Hash {
+				http.Error(w, "Wrong hash", http.StatusBadRequest)
+				return
+			}
+		}
+	}
+
+	h.storage.Repo.SaveBatch(params)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
