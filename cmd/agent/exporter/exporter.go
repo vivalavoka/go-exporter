@@ -13,13 +13,11 @@ import (
 )
 
 type Agent struct {
-	config       config.Config
-	client       *client.Client
-	pollCount    metrics.Counter
-	metrics      []*metrics.Metric
-	pollTicker   *time.Ticker
-	reportTicker *time.Ticker
-	hasher       *crypto.SHA256
+	config    config.Config
+	client    *client.Client
+	pollCount metrics.Counter
+	metrics   []*metrics.Metric
+	hasher    *crypto.SHA256
 }
 
 func New(config config.Config, client *client.Client) *Agent {
@@ -33,17 +31,17 @@ func New(config config.Config, client *client.Client) *Agent {
 }
 
 func (a *Agent) Start() {
-	a.pollTicker = time.NewTicker(a.config.PollInterval)
-	a.reportTicker = time.NewTicker(a.config.ReportInterval)
-	defer a.pollTicker.Stop()
-	defer a.reportTicker.Stop()
+	pollTicker := time.NewTicker(a.config.PollInterval)
+	reportTicker := time.NewTicker(a.config.ReportInterval)
+	defer pollTicker.Stop()
+	defer reportTicker.Stop()
 
 	for {
 		select {
-		case <-a.reportTicker.C:
+		case <-reportTicker.C:
 			log.Info("Report metrics")
 			a.ReportMetrics()
-		case <-a.pollTicker.C:
+		case <-pollTicker.C:
 			log.Info("Get metrics")
 			a.pollCount += 1
 			a.metrics = a.GetMetrics()
@@ -62,7 +60,7 @@ func (a *Agent) ReportMetrics() {
 		return
 	}
 
-	_, err := a.client.SendMetrics(a.config.Address, a.metrics)
+	_, err := a.client.SendMetrics(a.metrics)
 
 	if err != nil {
 		log.Error(err)

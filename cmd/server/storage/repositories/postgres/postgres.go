@@ -21,7 +21,7 @@ type PostgresDB struct {
 func New(cfg config.Config) (*PostgresDB, error) {
 	conn, err := sqlx.Open("postgres", cfg.DatabaseDSN)
 	if err != nil {
-		return nil, fmt.Errorf("unable to connect to database: %v", err)
+		return nil, fmt.Errorf("unable to connect to database: %w", err)
 	}
 
 	postgres := PostgresDB{config: cfg, connection: conn}
@@ -29,7 +29,7 @@ func New(cfg config.Config) (*PostgresDB, error) {
 	err = postgres.migration()
 
 	if err != nil {
-		return nil, fmt.Errorf("migration failed: %v", err)
+		return nil, fmt.Errorf("migration failed: %w", err)
 	}
 
 	postgres.insertStmt, err = postgres.connection.Prepare(`
@@ -75,7 +75,7 @@ func (r *PostgresDB) GetMetrics() (map[string]metrics.Metric, error) {
 
 	err := r.connection.Select(&metricList, "SELECT id, m_type, value, delta FROM metrics;")
 	if err != nil {
-		return metricMap, fmt.Errorf("query row failed: %v", err)
+		return metricMap, fmt.Errorf("query row failed: %w", err)
 	}
 
 	for _, metric := range metricList {
@@ -116,7 +116,7 @@ func (r *PostgresDB) SaveBatch(metricList []*metrics.Metric) error {
 	for _, metric := range metricList {
 		if _, err = stmt.Exec(metric.ID, metric.MType, metric.Value, metric.Delta); err != nil {
 			if err = tx.Rollback(); err != nil {
-				log.Fatalf("update drivers: unable to rollback: %v", err)
+				log.Error("update drivers: unable to rollback: %w", err)
 			}
 			return err
 		}

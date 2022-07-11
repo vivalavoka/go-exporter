@@ -27,8 +27,10 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.
 }
 
 func TestMetricHandle(t *testing.T) {
-	stg, _ := storage.New(config.Config{})
 	r := chi.NewRouter()
+	stg, err := storage.New(config.Config{})
+	assert.Nil(t, err)
+
 	handlers := Handlers{storage: stg}
 	handlers.SetRoutes(r)
 	ts := httptest.NewServer(r)

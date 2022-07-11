@@ -16,7 +16,7 @@ func main() {
 	var cfg config.Config
 	var stg *storage.Storage
 
-	if cfg, err = config.Get(); err != nil {
+	if cfg, err = config.Init(); err != nil {
 		log.Fatal(err)
 	}
 

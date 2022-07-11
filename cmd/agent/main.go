@@ -14,12 +14,12 @@ import (
 func main() {
 	rand.Seed(time.Now().Unix())
 
-	cfg, err := config.Get()
+	cfg, err := config.Init()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	client := client.New(resty.New())
+	client := client.New(cfg.Address, resty.New())
 
 	exporter := exporter.New(cfg, client)
 	exporter.Start()

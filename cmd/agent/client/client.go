@@ -8,14 +8,15 @@ import (
 )
 
 type Client struct {
+	address    string
 	restClient *resty.Client
 }
 
-func New(client *resty.Client) *Client {
-	return &Client{restClient: client}
+func New(address string, client *resty.Client) *Client {
+	return &Client{address: address, restClient: client}
 }
 
-func (c *Client) SendMetric(address string, metric *metrics.Metric) (*resty.Response, error) {
+func (c *Client) SendMetric(metric *metrics.Metric) (*resty.Response, error) {
 	body, err := json.Marshal(&metric)
 
 	if err != nil {
@@ -26,12 +27,12 @@ func (c *Client) SendMetric(address string, metric *metrics.Metric) (*resty.Resp
 		SetHeader("Content-Type", "application/json").
 		SetBody(body).
 		SetPathParams(map[string]string{
-			"address": address,
+			"address": c.address,
 		}).
 		Post("http://{address}/update/")
 }
 
-func (c *Client) SendMetrics(address string, metricList []*metrics.Metric) (*resty.Response, error) {
+func (c *Client) SendMetrics(metricList []*metrics.Metric) (*resty.Response, error) {
 	body, err := json.Marshal(&metricList)
 
 	if err != nil {
@@ -42,7 +43,7 @@ func (c *Client) SendMetrics(address string, metricList []*metrics.Metric) (*res
 		SetHeader("Content-Type", "application/json").
 		SetBody(body).
 		SetPathParams(map[string]string{
-			"address": address,
+			"address": c.address,
 		}).
 		Post("http://{address}/updates/")
 }

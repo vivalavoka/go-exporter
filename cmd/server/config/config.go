@@ -17,7 +17,7 @@ type Config struct {
 	DatabaseDSN   string        `env:"DATABASE_DSN"`
 }
 
-func Get() (Config, error) {
+func Init() (Config, error) {
 	var config Config
 	flag.StringVar(&config.Address, "a", "127.0.0.1:8080", "server address")
 	flag.DurationVar(&config.StoreInterval, "i", time.Duration(300*time.Millisecond), "store interval")
