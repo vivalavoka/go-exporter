@@ -13,21 +13,25 @@ type Config struct {
 	StoreInterval time.Duration `env:"STORE_INTERVAL"`
 	StoreFile     string        `env:"STORE_FILE"`
 	Restore       bool          `env:"RESTORE"`
+	SHAKey        string        `env:"KEY"`
+	DatabaseDSN   string        `env:"DATABASE_DSN"`
 }
 
-func Get() Config {
+func Init() (Config, error) {
 	var config Config
 	flag.StringVar(&config.Address, "a", "127.0.0.1:8080", "server address")
 	flag.DurationVar(&config.StoreInterval, "i", time.Duration(300*time.Millisecond), "store interval")
 	flag.StringVar(&config.StoreFile, "f", "/tmp/devops-metrics-db.json", "store file name")
 	flag.BoolVar(&config.Restore, "r", true, "need restore")
+	flag.StringVar(&config.SHAKey, "k", "", "sha key")
+	flag.StringVar(&config.DatabaseDSN, "d", "", "database dsn")
 	flag.Parse()
 
 	err := env.Parse(&config)
 	if err != nil {
-		log.Fatal(err)
+		return config, err
 	}
 
 	log.Info(config)
-	return config
+	return config, nil
 }
