@@ -5,6 +5,8 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/mem"
 	log "github.com/sirupsen/logrus"
 	"github.com/vivalavoka/go-exporter/cmd/agent/client"
 	"github.com/vivalavoka/go-exporter/cmd/agent/config"
@@ -33,10 +35,10 @@ func New(config config.Config, client *client.Client) *Agent {
 }
 
 func (a *Agent) Start() {
-	var ch chan []*metrics.Metric
-	ch = make(chan []*metrics.Metric)
+	ch := make(chan []*metrics.Metric)
 
-	go a.runtimeMetrics(ch)
+	// go a.runtimeMetrics(ch)
+	go a.psMetrics(ch)
 	go a.runReporting()
 
 	for {
@@ -83,13 +85,13 @@ func (a *Agent) runtimeMetrics(ch chan<- []*metrics.Metric) {
 	for {
 		<-pollTicker.C
 
-		log.Info("Get metrics")
+		log.Info("Get runtime metrics")
 		a.pollCount += 1
-		ch <- a.GetMetrics()
+		ch <- a.getRuntimeMetrics()
 	}
 }
 
-func (a *Agent) GetMetrics() []*metrics.Metric {
+func (a *Agent) getRuntimeMetrics() []*metrics.Metric {
 	var stats runtime.MemStats
 	runtime.ReadMemStats(&stats)
 	random := rand.Float64()
@@ -153,6 +155,43 @@ func (a *Agent) GetMetrics() []*metrics.Metric {
 		{ID: "Sys", MType: metrics.GaugeType, Value: &sys},
 		{ID: "TotalAlloc", MType: metrics.GaugeType, Value: &totalAlloc},
 		{ID: "RandomValue", MType: metrics.GaugeType, Value: &randomValue},
+	}
+
+	return metrics
+}
+
+func (a *Agent) psMetrics(ch chan<- []*metrics.Metric) {
+	pollTicker := time.NewTicker(a.config.PollInterval)
+	defer pollTicker.Stop()
+
+	for {
+		<-pollTicker.C
+
+		log.Info("Get ps metrics")
+		ch <- a.getPsMetrics()
+	}
+}
+
+func (a *Agent) getPsMetrics() []*metrics.Metric {
+	memory, err := mem.VirtualMemory()
+
+	if err != nil {
+		log.Warn(err)
+	}
+
+	cpuTimes, err := cpu.Times(false)
+	if err != nil {
+		log.Warn(err)
+	}
+
+	totalMemory := metrics.Gauge(memory.Total)
+	freeMemory := metrics.Gauge(memory.Free)
+	cpuUtilization := metrics.Gauge(100 - cpuTimes[0].Idle - cpuTimes[0].Steal)
+
+	metrics := []*metrics.Metric{
+		{ID: "TotalMemory", MType: metrics.GaugeType, Value: &totalMemory},
+		{ID: "FreeMemory", MType: metrics.GaugeType, Value: &freeMemory},
+		{ID: "CPUutilization1", MType: metrics.GaugeType, Value: &cpuUtilization},
 	}
 
 	return metrics
