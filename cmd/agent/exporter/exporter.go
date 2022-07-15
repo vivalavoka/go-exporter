@@ -16,54 +16,76 @@ type Agent struct {
 	config    config.Config
 	client    *client.Client
 	pollCount metrics.Counter
-	metrics   []*metrics.Metric
+	cache     *MetricCache
 	hasher    *crypto.SHA256
 }
 
 func New(config config.Config, client *client.Client) *Agent {
 	hasher := crypto.New(config.SHAKey)
+	cache := NewCache()
 	return &Agent{
 		config:    config,
 		client:    client,
 		pollCount: metrics.Counter(0),
 		hasher:    hasher,
+		cache:     cache,
 	}
 }
 
 func (a *Agent) Start() {
-	pollTicker := time.NewTicker(a.config.PollInterval)
+	var ch chan []*metrics.Metric
+	ch = make(chan []*metrics.Metric)
+
+	go a.runtimeMetrics(ch)
+	go a.runReporting()
+
+	for {
+		a.cache.Set(<-ch)
+	}
+}
+
+func (a *Agent) runReporting() {
 	reportTicker := time.NewTicker(a.config.ReportInterval)
-	defer pollTicker.Stop()
 	defer reportTicker.Stop()
 
 	for {
-		select {
-		case <-reportTicker.C:
-			log.Info("Report metrics")
-			a.ReportMetrics()
-		case <-pollTicker.C:
-			log.Info("Get metrics")
-			a.pollCount += 1
-			a.metrics = a.GetMetrics()
-		}
+		<-reportTicker.C
+
+		log.Info("Report metrics")
+		a.ReportMetrics()
 	}
 }
 
 func (a *Agent) ReportMetrics() {
-	for _, item := range a.metrics {
+	metrics := a.cache.Get()
+
+	if len(metrics) == 0 {
+		return
+	}
+
+	for _, item := range metrics {
 		if a.hasher.Enable {
 			item.Hash = a.hasher.GetSum(item.String())
 		}
 	}
 
-	if len(a.metrics) == 0 {
-		return
-	}
-
-	_, err := a.client.SendMetrics(a.metrics)
+	_, err := a.client.SendMetrics(metrics)
 
 	if err != nil {
 		log.Error(err)
+	}
+}
+
+func (a *Agent) runtimeMetrics(ch chan<- []*metrics.Metric) {
+	pollTicker := time.NewTicker(a.config.PollInterval)
+	defer pollTicker.Stop()
+
+	for {
+		<-pollTicker.C
+
+		log.Info("Get metrics")
+		a.pollCount += 1
+		ch <- a.GetMetrics()
 	}
 }
 
