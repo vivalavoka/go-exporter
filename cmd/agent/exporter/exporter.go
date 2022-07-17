@@ -35,9 +35,9 @@ func New(config config.Config, client *client.Client) *Agent {
 }
 
 func (a *Agent) Start() {
-	ch := make(chan []*metrics.Metric)
+	ch := make(chan *metrics.Metric, 10)
 
-	// go a.runtimeMetrics(ch)
+	go a.runtimeMetrics(ch)
 	go a.psMetrics(ch)
 	go a.runReporting()
 
@@ -59,7 +59,7 @@ func (a *Agent) runReporting() {
 }
 
 func (a *Agent) ReportMetrics() {
-	metrics := a.cache.Get()
+	metrics := a.cache.GetAll()
 
 	if len(metrics) == 0 {
 		return
@@ -78,7 +78,7 @@ func (a *Agent) ReportMetrics() {
 	}
 }
 
-func (a *Agent) runtimeMetrics(ch chan<- []*metrics.Metric) {
+func (a *Agent) runtimeMetrics(ch chan<- *metrics.Metric) {
 	pollTicker := time.NewTicker(a.config.PollInterval)
 	defer pollTicker.Stop()
 
@@ -87,7 +87,10 @@ func (a *Agent) runtimeMetrics(ch chan<- []*metrics.Metric) {
 
 		log.Info("Get runtime metrics")
 		a.pollCount += 1
-		ch <- a.getRuntimeMetrics()
+		metricList := a.getRuntimeMetrics()
+		for _, metric := range metricList {
+			ch <- metric
+		}
 	}
 }
 
@@ -160,7 +163,7 @@ func (a *Agent) getRuntimeMetrics() []*metrics.Metric {
 	return metrics
 }
 
-func (a *Agent) psMetrics(ch chan<- []*metrics.Metric) {
+func (a *Agent) psMetrics(ch chan<- *metrics.Metric) {
 	pollTicker := time.NewTicker(a.config.PollInterval)
 	defer pollTicker.Stop()
 
@@ -168,7 +171,10 @@ func (a *Agent) psMetrics(ch chan<- []*metrics.Metric) {
 		<-pollTicker.C
 
 		log.Info("Get ps metrics")
-		ch <- a.getPsMetrics()
+		metricList := a.getPsMetrics()
+		for _, metric := range metricList {
+			ch <- metric
+		}
 	}
 }
 
