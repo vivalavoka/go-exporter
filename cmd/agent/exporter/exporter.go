@@ -5,6 +5,8 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/mem"
 	log "github.com/sirupsen/logrus"
 	"github.com/vivalavoka/go-exporter/cmd/agent/client"
 	"github.com/vivalavoka/go-exporter/cmd/agent/config"
@@ -16,58 +18,83 @@ type Agent struct {
 	config    config.Config
 	client    *client.Client
 	pollCount metrics.Counter
-	metrics   []*metrics.Metric
+	cache     *MetricCache
 	hasher    *crypto.SHA256
 }
 
 func New(config config.Config, client *client.Client) *Agent {
 	hasher := crypto.New(config.SHAKey)
+	cache := NewCache()
 	return &Agent{
 		config:    config,
 		client:    client,
 		pollCount: metrics.Counter(0),
 		hasher:    hasher,
+		cache:     cache,
 	}
 }
 
 func (a *Agent) Start() {
-	pollTicker := time.NewTicker(a.config.PollInterval)
+	ch := make(chan *metrics.Metric, 10)
+
+	go a.runtimeMetrics(ch)
+	go a.psMetrics(ch)
+	go a.runReporting()
+
+	for {
+		a.cache.Set(<-ch)
+	}
+}
+
+func (a *Agent) runReporting() {
 	reportTicker := time.NewTicker(a.config.ReportInterval)
-	defer pollTicker.Stop()
 	defer reportTicker.Stop()
 
 	for {
-		select {
-		case <-reportTicker.C:
-			log.Info("Report metrics")
-			a.ReportMetrics()
-		case <-pollTicker.C:
-			log.Info("Get metrics")
-			a.pollCount += 1
-			a.metrics = a.GetMetrics()
-		}
+		<-reportTicker.C
+
+		log.Info("Report metrics")
+		a.ReportMetrics()
 	}
 }
 
 func (a *Agent) ReportMetrics() {
-	for _, item := range a.metrics {
+	metrics := a.cache.GetAll()
+
+	if len(metrics) == 0 {
+		return
+	}
+
+	for _, item := range metrics {
 		if a.hasher.Enable {
 			item.Hash = a.hasher.GetSum(item.String())
 		}
 	}
 
-	if len(a.metrics) == 0 {
-		return
-	}
-
-	_, err := a.client.SendMetrics(a.metrics)
+	_, err := a.client.SendMetrics(metrics)
 
 	if err != nil {
 		log.Error(err)
 	}
 }
 
-func (a *Agent) GetMetrics() []*metrics.Metric {
+func (a *Agent) runtimeMetrics(ch chan<- *metrics.Metric) {
+	pollTicker := time.NewTicker(a.config.PollInterval)
+	defer pollTicker.Stop()
+
+	for {
+		<-pollTicker.C
+
+		log.Info("Get runtime metrics")
+		a.pollCount += 1
+		metricList := a.getRuntimeMetrics()
+		for _, metric := range metricList {
+			ch <- metric
+		}
+	}
+}
+
+func (a *Agent) getRuntimeMetrics() []*metrics.Metric {
 	var stats runtime.MemStats
 	runtime.ReadMemStats(&stats)
 	random := rand.Float64()
@@ -134,4 +161,49 @@ func (a *Agent) GetMetrics() []*metrics.Metric {
 	}
 
 	return metrics
+}
+
+func (a *Agent) psMetrics(ch chan<- *metrics.Metric) {
+	pollTicker := time.NewTicker(a.config.PollInterval)
+	defer pollTicker.Stop()
+
+	for {
+		<-pollTicker.C
+
+		log.Info("Get ps metrics")
+		metricList, err := a.getPsMetrics()
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+
+		for _, metric := range metricList {
+			ch <- metric
+		}
+	}
+}
+
+func (a *Agent) getPsMetrics() ([]*metrics.Metric, error) {
+	memory, err := mem.VirtualMemory()
+
+	if err != nil {
+		return nil, err
+	}
+
+	cpuTimes, err := cpu.Times(false)
+	if err != nil {
+		return nil, err
+	}
+
+	totalMemory := metrics.Gauge(memory.Total)
+	freeMemory := metrics.Gauge(memory.Free)
+	cpuUtilization := metrics.Gauge(100 - cpuTimes[0].Idle - cpuTimes[0].Steal)
+
+	metrics := []*metrics.Metric{
+		{ID: "TotalMemory", MType: metrics.GaugeType, Value: &totalMemory},
+		{ID: "FreeMemory", MType: metrics.GaugeType, Value: &freeMemory},
+		{ID: "CPUutilization1", MType: metrics.GaugeType, Value: &cpuUtilization},
+	}
+
+	return metrics, nil
 }
