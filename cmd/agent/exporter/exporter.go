@@ -171,23 +171,28 @@ func (a *Agent) psMetrics(ch chan<- *metrics.Metric) {
 		<-pollTicker.C
 
 		log.Info("Get ps metrics")
-		metricList := a.getPsMetrics()
+		metricList, err := a.getPsMetrics()
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+
 		for _, metric := range metricList {
 			ch <- metric
 		}
 	}
 }
 
-func (a *Agent) getPsMetrics() []*metrics.Metric {
+func (a *Agent) getPsMetrics() ([]*metrics.Metric, error) {
 	memory, err := mem.VirtualMemory()
 
 	if err != nil {
-		log.Warn(err)
+		return nil, err
 	}
 
 	cpuTimes, err := cpu.Times(false)
 	if err != nil {
-		log.Warn(err)
+		return nil, err
 	}
 
 	totalMemory := metrics.Gauge(memory.Total)
@@ -200,5 +205,5 @@ func (a *Agent) getPsMetrics() []*metrics.Metric {
 		{ID: "CPUutilization1", MType: metrics.GaugeType, Value: &cpuUtilization},
 	}
 
-	return metrics
+	return metrics, nil
 }
